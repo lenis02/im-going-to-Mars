@@ -1,19 +1,45 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Stock } from './entities/stock.entity';
 import { CreateStockDto } from './dto/create-stock.dto';
 import { UpdateStockDto } from './dto/update-stock.dto';
+
+export interface ForeignRankingRow {
+  ticker: string;
+  name: string;
+  market: string;
+  foreignNetBuy: number;
+  date: string;
+}
 
 @Injectable()
 export class StockService {
   constructor(
     @InjectRepository(Stock)
     private readonly stockRepo: Repository<Stock>,
+    private readonly dataSource: DataSource,
   ) {}
 
   findAll(): Promise<Stock[]> {
     return this.stockRepo.find({ order: { ticker: 'ASC' } });
+  }
+
+  async findForeignRanking(): Promise<ForeignRankingRow[]> {
+    return this.dataSource.query<ForeignRankingRow[]>(`
+      SELECT
+        s.ticker,
+        s.name,
+        s.market,
+        dp.foreign_net_buy AS "foreignNetBuy",
+        dp.date
+      FROM stock s
+      JOIN daily_price dp ON dp.stock_id = s.id
+      WHERE dp.date = (
+        SELECT MAX(d.date) FROM daily_price d WHERE d.stock_id = s.id
+      )
+      ORDER BY dp.foreign_net_buy DESC
+    `);
   }
 
   async findOne(ticker: string): Promise<Stock> {

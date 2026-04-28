@@ -23,6 +23,12 @@ export class StockController {
     return { data };
   }
 
+  @Get('ranking/foreign')
+  async foreignRanking() {
+    const data = await this.stockService.findForeignRanking();
+    return { data, meta: { count: data.length } };
+  }
+
   @Get(':ticker')
   async findOne(@Param('ticker') ticker: string) {
     const data = await this.stockService.findOne(ticker);
