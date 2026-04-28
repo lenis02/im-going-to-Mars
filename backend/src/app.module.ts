@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { StockModule } from './stock/stock.module';
@@ -32,6 +33,7 @@ import configuration from './config/configuration';
         migrationsRun: true,
       }),
     }),
+    ScheduleModule.forRoot(),
     StockModule,
     PriceModule,
     SignalModule,

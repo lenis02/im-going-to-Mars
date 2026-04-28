@@ -28,6 +28,16 @@ export class StockService {
     return this.stockRepo.save(stock);
   }
 
+  async upsert(dto: CreateStockDto): Promise<void> {
+    await this.stockRepo
+      .createQueryBuilder()
+      .insert()
+      .into(Stock)
+      .values(dto)
+      .orUpdate(['name', 'market'], ['ticker'])
+      .execute();
+  }
+
   async update(ticker: string, dto: UpdateStockDto): Promise<Stock> {
     const stock = await this.findOne(ticker);
     Object.assign(stock, dto);
