@@ -11,7 +11,6 @@ const FOREIGN_LOOKBACK_MAX = 10;
 const VOLUME_EXPLOSION_RATIO = 2.0;
 const BREAKOUT_MIN = 0.02;
 const BREAKOUT_MAX = 0.07;
-const EXIT_LOOKBACK_MIN = 10;
 const EXIT_LOOKBACK_MAX = 15;
 
 export function isEntrySignal(
@@ -30,7 +29,8 @@ export function isEntrySignal(
     foreignWindow.every((p) => p.foreignNetBuy > 0) ||
     minWindow.every((p) => p.foreignNetBuy > 0);
 
-  const volumeExploded = today.volume >= yesterday.volume * VOLUME_EXPLOSION_RATIO;
+  const volumeExploded =
+    today.volume >= yesterday.volume * VOLUME_EXPLOSION_RATIO;
 
   const breakoutRatio = (today.close - recentHigh) / recentHigh;
   const inBreakoutRange =

@@ -4,6 +4,6 @@ import { SignalService } from './signal.service';
 
 @Module({
   controllers: [SignalController],
-  providers: [SignalService]
+  providers: [SignalService],
 })
 export class SignalModule {}

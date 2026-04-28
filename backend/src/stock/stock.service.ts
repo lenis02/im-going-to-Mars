@@ -18,7 +18,8 @@ export class StockService {
 
   async findOne(ticker: string): Promise<Stock> {
     const stock = await this.stockRepo.findOneBy({ ticker });
-    if (!stock) throw new NotFoundException(`종목을 찾을 수 없습니다: ${ticker}`);
+    if (!stock)
+      throw new NotFoundException(`종목을 찾을 수 없습니다: ${ticker}`);
     return stock;
   }
 
