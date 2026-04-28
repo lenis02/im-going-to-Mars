@@ -3,6 +3,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { StockModule } from './stock/stock.module';
+import { PriceModule } from './price/price.module';
+import { SignalModule } from './signal/signal.module';
+import { ValuationModule } from './valuation/valuation.module';
+import { DataSyncModule } from './data-sync/data-sync.module';
+import { AnalysisModule } from './analysis/analysis.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -26,6 +32,12 @@ import configuration from './config/configuration';
         migrationsRun: true,
       }),
     }),
+    StockModule,
+    PriceModule,
+    SignalModule,
+    ValuationModule,
+    DataSyncModule,
+    AnalysisModule,
   ],
   controllers: [AppController],
   providers: [AppService],
