@@ -6,22 +6,23 @@ on:
   pull_request:
     branches: [main, master]
 
+# 주요 설정 일부
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        working-directory: backend # 모든 npm 명령어가 실행될 기본 경로
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4 # 코드 체크아웃
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
+          cache: npm # npm 캐시를 활성화하여 워크플로우 실행 속도 단축
+          cache-dependency-path: backend/package-lock.json # 캐시 기준 파일 명시
 
       - name: Install dependencies
         run: npm ci

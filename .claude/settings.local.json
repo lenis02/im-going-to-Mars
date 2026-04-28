@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git update-ref *)"
+      "Bash(git update-ref *)",
+      "Bash(npm install *)",
+      "Bash(npm run *)"
     ]
   }
 }
