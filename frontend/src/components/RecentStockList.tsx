@@ -130,7 +130,7 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect }
                   }`}>
                     {row.foreignNetBuy === undefined
                       ? '동기화 필요'
-                      : row.foreignNetBuy.toLocaleString()}
+                      : Number(row.foreignNetBuy).toLocaleString()}
                   </td>
                   <td className="px-6 py-4 text-center text-gray-400 text-xs">
                     {row.date ?? '—'}
