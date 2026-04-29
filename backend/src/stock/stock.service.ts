@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Stock } from './entities/stock.entity';
 import { CreateStockDto } from './dto/create-stock.dto';
 import { UpdateStockDto } from './dto/update-stock.dto';
@@ -18,27 +18,28 @@ export class StockService {
   constructor(
     @InjectRepository(Stock)
     private readonly stockRepo: Repository<Stock>,
-    private readonly dataSource: DataSource,
   ) {}
 
   findAll(): Promise<Stock[]> {
     return this.stockRepo.find({ order: { ticker: 'ASC' } });
   }
 
-  async findForeignRanking(): Promise<ForeignRankingRow[]> {
-    return this.dataSource.query<ForeignRankingRow[]>(`
+  findForeignRanking(): Promise<ForeignRankingRow[]> {
+    return this.stockRepo.query(`
       SELECT
         s.ticker,
         s.name,
         s.market,
-        dp.foreign_net_buy AS "foreignNetBuy",
-        dp.date
+        SUM(dp."foreignNetBuy") AS "foreignNetBuy",
+        to_char(MAX(dp.date), 'YYYY-MM-DD') AS date
       FROM stock s
-      JOIN daily_price dp ON dp.stock_id = s.id
-      WHERE dp.date = (
-        SELECT MAX(d.date) FROM daily_price d WHERE d.stock_id = s.id
-      )
-      ORDER BY dp.foreign_net_buy DESC
+      JOIN (
+        SELECT *,
+          ROW_NUMBER() OVER (PARTITION BY "stockId" ORDER BY date DESC) AS rn
+        FROM daily_price
+      ) dp ON dp."stockId" = s.id AND dp.rn <= 7
+      GROUP BY s.id, s.ticker, s.name, s.market
+      ORDER BY SUM(dp."foreignNetBuy") DESC
     `);
   }
 

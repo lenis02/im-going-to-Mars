@@ -3,6 +3,10 @@ export interface KisTokenResponse {
   expires_in: number;
 }
 
+export interface KisDailyPriceOutput1 {
+  hts_kor_isnm: string; // 종목명
+}
+
 export interface KisDailyPriceItem {
   stck_bsop_date: string; // 영업일자 YYYYMMDD
   stck_oprc: string; // 시가
@@ -16,18 +20,19 @@ export interface KisDailyPriceResponse {
   rt_cd: string;
   msg_cd: string;
   msg1: string;
+  output1: KisDailyPriceOutput1;
   output2: KisDailyPriceItem[];
 }
 
-export interface KisForeignRankingItem {
-  mksc_shrn_iscd: string; // 종목코드
-  hts_kor_isnm: string; // 종목명
-  frgn_ntby_qty: string; // 외인 누적 순매수량
+export interface KisInvestorTradeItem {
+  stck_bsop_date: string; // 영업일자 YYYYMMDD
+  frgn_ntby_qty: string; // 외국인 순매수 수량
 }
 
-export interface KisForeignRankingResponse {
+export interface KisInvestorTradeByStockResponse {
   rt_cd: string;
   msg_cd: string;
   msg1: string;
-  output: KisForeignRankingItem[];
+  output1: { rprs_mrkt_kor_name: string };
+  output2: KisInvestorTradeItem[];
 }

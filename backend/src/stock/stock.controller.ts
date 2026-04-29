@@ -37,7 +37,8 @@ export class StockController {
 
   @Post()
   async create(@Body() dto: CreateStockDto) {
-    const data = await this.stockService.create(dto);
+    await this.stockService.upsert(dto);
+    const data = await this.stockService.findOne(dto.ticker);
     return { data };
   }
 
