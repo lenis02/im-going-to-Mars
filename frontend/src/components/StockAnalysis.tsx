@@ -36,9 +36,9 @@ function calcFactors(prices: DailyPrice[]): { factors: Factor[]; verdict: 'entry
   // 2. 거래량 폭발
   const volumeRatio = prev.volume > 0 ? latest.volume / prev.volume : 0
 
-  // 3. 전일 종가 대비 2~7% 상승
-  const priceChangeRatio = prev.close > 0 ? latest.close / prev.close : 0
-  const priceRise = priceChangeRatio >= 1.02 && priceChangeRatio <= 1.07
+  // 3. 전일 대비 2~7% 상승 (KIS 기준가 기반 changeRate 사용)
+  const changeRate = Number(latest.changeRate)
+  const priceRise = changeRate >= 2 && changeRate <= 7
 
   const factors: Factor[] = [
     {
@@ -54,7 +54,7 @@ function calcFactors(prices: DailyPrice[]): { factors: Factor[]; verdict: 'entry
     {
       label: '전일 대비 2~7% 상승',
       met: priceRise,
-      detail: `+${((priceChangeRatio - 1) * 100).toFixed(2)}% (기준: +2%~+7%)`,
+      detail: `${changeRate >= 0 ? '+' : ''}${changeRate.toFixed(2)}% (기준: +2%~+7%)`,
     },
   ]
 
@@ -118,10 +118,14 @@ export default function StockAnalysis({ ticker }: Props) {
   const { factors, verdict } = calcFactors(prices)
   const verdictConfig = VERDICT_CONFIG[verdict]
 
-  const priceChartData = [...prices]
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .map((p) => ({ date: p.date.slice(5), close: Number(p.close) }))
+  const sorted = [...prices].sort((a, b) => a.date.localeCompare(b.date))
+  const latest = sorted[sorted.length - 1]
+  const latestClose = Number(latest.close)
+  const latestChangeRate = Number(latest.changeRate)
+  const isUp = latestChangeRate >= 0
+  const changeColor = isUp ? 'text-red-500' : 'text-blue-500'
 
+  const priceChartData = sorted.map((p) => ({ date: p.date.slice(5), close: Number(p.close) }))
   const netBuyChartData = calcRolling7(prices)
 
   return (
@@ -129,9 +133,17 @@ export default function StockAnalysis({ ticker }: Props) {
       {/* 헤더 */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <div>
-          <span className="font-mono font-medium text-blue-600 text-sm">{ticker}</span>
-          {stock && <span className="ml-2 font-semibold text-gray-900">{stock.name}</span>}
-          <p className="text-xs text-gray-400 mt-0.5">최근 30일 · Entry 신호 분석</p>
+          <div className="flex items-center gap-2">
+            <span className="font-mono font-medium text-blue-600 text-sm">{ticker}</span>
+            {stock && <span className="font-semibold text-gray-900">{stock.name}</span>}
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-xl font-bold text-gray-900">{latestClose.toLocaleString()}원</span>
+            <span className={`text-sm font-medium ${changeColor}`}>
+              {isUp ? '+' : ''}{latestChangeRate.toFixed(2)}%
+            </span>
+          </div>
+          <p className="text-xs text-gray-400 mt-0.5">전일 대비 · 최근 30일 분석</p>
         </div>
         <span className={`px-3 py-1 text-sm font-semibold rounded-full border ${verdictConfig.className}`}>
           {verdictConfig.label}
@@ -141,12 +153,12 @@ export default function StockAnalysis({ ticker }: Props) {
       <div className="px-6 pt-5 pb-2 grid grid-cols-10 gap-6">
         {/* 종가 차트 */}
         <div className="col-span-7">
-          <p className="text-xs font-medium text-gray-500 mb-2">종가 추이</p>
+          <p className="text-xs font-medium text-gray-500 mb-2">종가 추이 <span className="text-gray-300 font-normal">(수정주가 기준)</span></p>
           <ResponsiveContainer width="100%" height={160}>
             <LineChart data={priceChartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} width={36} />
-              <Tooltip formatter={(v: number) => [`${v.toLocaleString()}원`, '종가']} />
+              <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`} width={36} />
+              <Tooltip formatter={(v) => [`${Number(v).toLocaleString()}원`, '종가']} />
               <Line dataKey="close" type="monotone" stroke="#f59e0b" dot={false} strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>

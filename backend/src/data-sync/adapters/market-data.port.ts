@@ -5,6 +5,7 @@ export interface OhlcvDto {
   low: number;
   close: number;
   volume: number;
+  changeRate: number; // 전일 대비율 (기준가 기준, KIS 계산값)
 }
 
 export interface DailyInvestorDto {

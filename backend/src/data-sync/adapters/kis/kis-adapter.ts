@@ -57,7 +57,7 @@ export class KisAdapter implements MarketDataPort {
             FID_INPUT_DATE_1: format(from, 'yyyyMMdd'),
             FID_INPUT_DATE_2: format(to, 'yyyyMMdd'),
             FID_PERIOD_DIV_CODE: 'D',
-            FID_ORG_ADJ_PRC: '0',
+            FID_ORG_ADJ_PRC: '1',
           },
         },
       ),
@@ -70,6 +70,11 @@ export class KisAdapter implements MarketDataPort {
       low: Number(item.stck_lwpr),
       close: Number(item.stck_clpr),
       volume: Number(item.acml_vol),
+      changeRate: (() => {
+        const isDown = ['4', '5'].includes(item.prdy_vrss_sign);
+        const rate = Math.abs(Number(item.prdy_ctrt ?? '0'));
+        return isDown ? -rate : rate;
+      })(),
     }));
   }
 
@@ -77,32 +82,61 @@ export class KisAdapter implements MarketDataPort {
     ticker: string,
   ): Promise<{ name: string; market: 'KOSPI' | 'KOSDAQ' } | null> {
     const today = format(new Date(), 'yyyyMMdd');
-    const yesterday = format(subDays(new Date(), 5), 'yyyyMMdd');
+    const fiveDaysAgo = format(subDays(new Date(), 5), 'yyyyMMdd');
 
+    // 종목명: inquire-daily-itemchartprice는 'J'로 KOSPI/KOSDAQ 구분 없이 응답하므로 이름만 가져옴
+    let name: string | null = null;
+    try {
+      const priceHeaders = await this.headers('FHKST03010100');
+      const { data } = await firstValueFrom(
+        this.httpService.get<KisDailyPriceResponse>(
+          `${this.baseUrl}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice`,
+          {
+            headers: priceHeaders,
+            params: {
+              FID_COND_MRKT_DIV_CODE: 'J',
+              FID_INPUT_ISCD: ticker,
+              FID_INPUT_DATE_1: fiveDaysAgo,
+              FID_INPUT_DATE_2: today,
+              FID_PERIOD_DIV_CODE: 'D',
+              FID_ORG_ADJ_PRC: '1',
+            },
+          },
+        ),
+      );
+      if (data.rt_cd === '0') name = data.output1?.hts_kor_isnm ?? null;
+    } catch {
+      return null;
+    }
+
+    if (!name) return null;
+
+    // 시장 구분: investor-trade 엔드포인트의 rprs_mrkt_kor_name으로 정확히 판별
     for (const market of ['J', 'Q'] as const) {
       try {
-        const headers = await this.headers('FHKST03010100');
+        const invHeaders = await this.headers('FHPTJ04160001');
         const { data } = await firstValueFrom(
-          this.httpService.get<KisDailyPriceResponse>(
-            `${this.baseUrl}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice`,
+          this.httpService.get<KisInvestorTradeByStockResponse>(
+            `${this.baseUrl}/uapi/domestic-stock/v1/quotations/investor-trade-by-stock-daily`,
             {
-              headers,
+              headers: invHeaders,
               params: {
                 FID_COND_MRKT_DIV_CODE: market,
                 FID_INPUT_ISCD: ticker,
-                FID_INPUT_DATE_1: yesterday,
+                FID_INPUT_DATE_1: today,
                 FID_INPUT_DATE_2: today,
-                FID_PERIOD_DIV_CODE: 'D',
                 FID_ORG_ADJ_PRC: '0',
+                FID_ETC_CLS_CODE: '00',
               },
             },
           ),
         );
 
-        if (data.rt_cd === '0' && data.output1?.hts_kor_isnm) {
+        const marketName = data.output1?.rprs_mrkt_kor_name ?? '';
+        if (data.rt_cd === '0' && marketName) {
           return {
-            name: data.output1.hts_kor_isnm,
-            market: market === 'J' ? 'KOSPI' : 'KOSDAQ',
+            name,
+            market: marketName.includes('코스닥') ? 'KOSDAQ' : 'KOSPI',
           };
         }
       } catch {

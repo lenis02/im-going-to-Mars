@@ -33,6 +33,7 @@ export interface DailyPrice {
   close: number
   volume: number
   foreignNetBuy: number
+  changeRate: number
 }
 
 export interface CreateStockDto {

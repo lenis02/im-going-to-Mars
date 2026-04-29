@@ -48,7 +48,7 @@ export class PriceService {
   ): Promise<DailyPrice> {
     const stock = await this.stockService.findOne(ticker);
 
-    const updateCols = ['open', 'high', 'low', 'close', 'volume'];
+    const updateCols = ['open', 'high', 'low', 'close', 'volume', 'changeRate'];
     if (updateForeignNetBuy) updateCols.push('foreignNetBuy');
 
     await this.priceRepo
