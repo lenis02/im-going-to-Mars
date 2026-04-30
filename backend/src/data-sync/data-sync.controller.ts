@@ -41,4 +41,10 @@ export class DataSyncController {
     }
     return { data: { ticker: ticker.toUpperCase(), ...info } };
   }
+
+  @Get('quote/:ticker')
+  async currentPrice(@Param('ticker') ticker: string) {
+    const data = await this.kisAdapter.fetchCurrentPrice(ticker.toUpperCase());
+    return { data };
+  }
 }

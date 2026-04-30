@@ -6,11 +6,13 @@ import { AxiosError } from 'axios';
 import { format, subDays } from 'date-fns';
 import { KisAuthService } from './kis-auth.service';
 import {
+  CurrentPriceDto,
   DailyInvestorDto,
   MarketDataPort,
   OhlcvDto,
 } from '../market-data.port';
 import {
+  KisCurrentPriceResponse,
   KisDailyPriceResponse,
   KisInvestorTradeByStockResponse,
 } from './kis.types';
@@ -72,10 +74,8 @@ export class KisAdapter implements MarketDataPort {
       volume: Number(item.acml_vol),
       changeRate: (() => {
         const isDown = ['4', '5'].includes(item.prdy_vrss_sign);
-        const vrss = Math.abs(Number(item.prdy_vrss));
-        const close = Number(item.stck_clpr);
-        const prevClose = isDown ? close + vrss : close - vrss;
-        return prevClose > 0 ? ((isDown ? -vrss : vrss) / prevClose) * 100 : 0;
+        const rate = Number(item.prdy_ctrt);
+        return isDown ? -rate : rate;
       })(),
     }));
   }
@@ -186,5 +186,28 @@ export class KisAdapter implements MarketDataPort {
       );
       throw err;
     }
+  }
+
+  async fetchCurrentPrice(ticker: string): Promise<CurrentPriceDto> {
+    const headers = await this.headers('FHKST01010100');
+    const { data } = await firstValueFrom(
+      this.httpService.get<KisCurrentPriceResponse>(
+        `${this.baseUrl}/uapi/domestic-stock/v1/quotations/inquire-price`,
+        {
+          headers,
+          params: {
+            FID_COND_MRKT_DIV_CODE: 'J',
+            FID_INPUT_ISCD: ticker,
+          },
+        },
+      ),
+    );
+
+    const isDown = ['4', '5'].includes(data.output.prdy_vrss_sign.trim());
+    const rate = Math.abs(Number(data.output.prdy_ctrt));
+    return {
+      price: Number(data.output.stck_prpr),
+      changeRate: isDown ? -rate : rate,
+    };
   }
 }

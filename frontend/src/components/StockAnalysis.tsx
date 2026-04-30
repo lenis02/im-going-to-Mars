@@ -3,8 +3,8 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import { fetchPrices, fetchStocks } from '../api/stock'
-import type { DailyPrice, Stock } from '../api/stock'
+import { fetchCurrentQuote, fetchPrices, fetchStocks } from '../api/stock'
+import type { CurrentQuote, DailyPrice, Stock } from '../api/stock'
 
 interface Props {
   ticker: string
@@ -192,6 +192,7 @@ const VERDICT_CONFIG = {
 export default function StockAnalysis({ ticker }: Props) {
   const [prices, setPrices] = useState<DailyPrice[]>([])
   const [stock, setStock] = useState<Stock | null>(null)
+  const [quote, setQuote] = useState<CurrentQuote | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [chartType, setChartType] = useState<'line' | 'candle'>('line')
@@ -208,13 +209,21 @@ export default function StockAnalysis({ ticker }: Props) {
   useEffect(() => {
     setLoading(true)
     setError(null)
-    Promise.all([fetchPrices(ticker), fetchStocks()])
-      .then(([priceData, stocks]) => {
+    Promise.all([fetchPrices(ticker), fetchStocks(), fetchCurrentQuote(ticker)])
+      .then(([priceData, stocks, quoteData]) => {
         setPrices(priceData)
         setStock(stocks.find((s) => s.ticker === ticker) ?? null)
+        setQuote(quoteData)
       })
       .catch(() => setError('데이터를 불러오지 못했습니다.'))
       .finally(() => setLoading(false))
+  }, [ticker])
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      fetchCurrentQuote(ticker).then(setQuote).catch(() => {})
+    }, 1_000)
+    return () => clearInterval(id)
   }, [ticker])
 
   if (loading) {
@@ -237,9 +246,8 @@ export default function StockAnalysis({ ticker }: Props) {
   const verdictConfig = VERDICT_CONFIG[verdict]
 
   const sorted = [...prices].sort((a, b) => a.date.localeCompare(b.date))
-  const latest = sorted[sorted.length - 1]
-  const latestClose = Number(latest.close)
-  const latestChangeRate = Number(latest.changeRate)
+  const latestClose = quote?.price ?? Number(sorted[sorted.length - 1].close)
+  const latestChangeRate = quote?.changeRate ?? 0
   const isUp = latestChangeRate >= 0
   const changeColor = isUp ? 'text-red-500' : 'text-blue-500'
 
