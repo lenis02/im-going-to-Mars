@@ -136,6 +136,7 @@ export default function StockAnalysis({ ticker }: Props) {
   const [quote, setQuote] = useState<CurrentQuote | null>(null)
   const [signal, setSignal] = useState<StockSignal | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [showConditions, setShowConditions] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const candleRef = useRef<HTMLDivElement>(null)
@@ -151,13 +152,14 @@ export default function StockAnalysis({ ticker }: Props) {
   useEffect(() => {
     setLoading(true)
     setError(null)
-    Promise.all([fetchPrices(ticker), fetchStocks(), fetchCurrentQuote(ticker), fetchSignal(ticker)])
-      .then(([priceData, stocks, quoteData, signalData]) => {
+    Promise.all([fetchPrices(ticker), fetchStocks(), fetchCurrentQuote(ticker)])
+      .then(([priceData, stocks, quoteData]) => {
         setPrices(priceData)
         setStock(stocks.find((s) => s.ticker === ticker) ?? null)
         setQuote(quoteData)
-        setSignal(signalData)
+        return fetchSignal(ticker, quoteData.changeRate)
       })
+      .then((signalData) => setSignal(signalData))
       .catch(() => setError('데이터를 불러오지 못했습니다.'))
       .finally(() => setLoading(false))
   }, [ticker])
@@ -307,7 +309,7 @@ export default function StockAnalysis({ ticker }: Props) {
       {showModal && signal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"
-          onClick={() => setShowModal(false)}
+          onClick={() => { setShowModal(false); setShowConditions(false) }}
         >
           <div className="absolute inset-0 bg-black/30" />
           <div
@@ -321,7 +323,7 @@ export default function StockAnalysis({ ticker }: Props) {
                 <h3 className={`font-bold text-base ${sig.text}`}>{sig.label}</h3>
               </div>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => { setShowModal(false); setShowConditions(false) }}
                 className="text-gray-300 hover:text-gray-500 text-lg leading-none"
               >
                 ✕
@@ -369,9 +371,78 @@ export default function StockAnalysis({ ticker }: Props) {
             </div>
 
             {/* 시그널 근거 */}
-            <div className="px-5 pb-5 pt-1 border-t border-gray-100">
+            <div className="px-5 pb-4 pt-1 border-t border-gray-100">
               <p className="text-xs text-gray-500 leading-relaxed">{signal.reason}</p>
             </div>
+
+            {/* 추천 조건 상세 토글 */}
+            <div className="border-t border-gray-100">
+              <button
+                onClick={() => setShowConditions((v) => !v)}
+                className="w-full flex items-center justify-between px-5 py-3 text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                <span>추천 조건 상세 보기</span>
+                <span className={`transition-transform duration-200 ${showConditions ? 'rotate-180' : ''}`}>▾</span>
+              </button>
+
+              <div className={`overflow-hidden transition-all duration-300 ${showConditions ? 'max-h-96' : 'max-h-0'}`}>
+                <div className="px-5 pb-5 space-y-4">
+
+                  {/* 스윙 진입 */}
+                  <div>
+                    <p className="text-[11px] font-bold text-red-500 mb-1.5">스윙 진입 <span className="font-normal text-gray-400">(세 조건 모두 충족)</span></p>
+                    <div className="space-y-1">
+                      {[
+                        ['외인 연속 순매수', '3일 이상'],
+                        ['거래량', '전일 대비 150% ~ 300%'],
+                        ['전일 대비 등락율', '+1.5% ~ +6.0%'],
+                      ].map(([label, value]) => (
+                        <div key={label} className="flex justify-between text-[11px]">
+                          <span className="text-gray-400">{label}</span>
+                          <span className="text-gray-600 font-medium">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 관심 집중 */}
+                  <div>
+                    <p className="text-[11px] font-bold text-amber-500 mb-1.5">관심 집중 <span className="font-normal text-gray-400">(일부 충족)</span></p>
+                    <div className="space-y-1">
+                      {[
+                        ['외인 연속 순매수', '2일 이상'],
+                        ['거래량', '전일 대비 100% ~ 150%'],
+                        ['전일 대비 등락율', '+1.0% ~ +3.0%'],
+                      ].map(([label, value]) => (
+                        <div key={label} className="flex justify-between text-[11px]">
+                          <span className="text-gray-400">{label}</span>
+                          <span className="text-gray-600 font-medium">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 과열/하락 경고 */}
+                  <div>
+                    <p className="text-[11px] font-bold text-blue-500 mb-1.5">과열/하락 경고 <span className="font-normal text-gray-400">(하나라도 해당)</span></p>
+                    <div className="space-y-1">
+                      {[
+                        ['하락 전환형 캔들 패턴', '감지 시'],
+                        ['전일 대비 등락율', '+10% 이상 또는 -3% 이하'],
+                        ['거래량', '전일 대비 400% 이상'],
+                      ].map(([label, value]) => (
+                        <div key={label} className="flex justify-between text-[11px]">
+                          <span className="text-gray-400">{label}</span>
+                          <span className="text-gray-600 font-medium">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       )}

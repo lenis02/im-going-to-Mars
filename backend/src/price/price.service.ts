@@ -69,7 +69,7 @@ export class PriceService {
     await this.priceRepo.remove(price);
   }
 
-  async getSignal(ticker: string): Promise<{
+  async getSignal(ticker: string, currentChangeRate?: number): Promise<{
     patternName: string;
     patternCategory: CandleCategory | null;
     status: SignalResult['status'];
@@ -107,10 +107,10 @@ export class PriceService {
       Number(prev.volume) > 0
         ? (Number(latest.volume) / Number(prev.volume)) * 100
         : 0;
-    const priceChangeRate = Number(latest.changeRate);
+    const priceChangeRate = currentChangeRate ?? Number(latest.changeRate);
 
     const detector = new CandlePatternDetector();
-    const recentCandles = sorted.slice(-5).map((p) => ({
+    const recentCandles = sorted.map((p) => ({
       open: Number(p.open),
       high: Number(p.high),
       low: Number(p.low),

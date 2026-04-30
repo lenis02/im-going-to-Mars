@@ -27,8 +27,12 @@ export class PriceController {
   }
 
   @Get('signal')
-  async getSignal(@Param('ticker') ticker: string) {
-    const data = await this.priceService.getSignal(ticker);
+  async getSignal(
+    @Param('ticker') ticker: string,
+    @Query('changeRate') changeRate?: string,
+  ) {
+    const currentChangeRate = changeRate !== undefined ? Number(changeRate) : undefined;
+    const data = await this.priceService.getSignal(ticker, currentChangeRate);
     return { data };
   }
 
