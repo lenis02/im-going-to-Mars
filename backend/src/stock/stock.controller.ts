@@ -23,6 +23,12 @@ export class StockController {
     return { data };
   }
 
+  @Get('ranking/foreign')
+  async foreignRanking() {
+    const data = await this.stockService.findForeignRanking();
+    return { data, meta: { count: data.length } };
+  }
+
   @Get(':ticker')
   async findOne(@Param('ticker') ticker: string) {
     const data = await this.stockService.findOne(ticker);
@@ -31,7 +37,8 @@ export class StockController {
 
   @Post()
   async create(@Body() dto: CreateStockDto) {
-    const data = await this.stockService.create(dto);
+    await this.stockService.upsert(dto);
+    const data = await this.stockService.findOne(dto.ticker);
     return { data };
   }
 

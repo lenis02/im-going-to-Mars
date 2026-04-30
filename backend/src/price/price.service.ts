@@ -41,18 +41,22 @@ export class PriceService {
     return price;
   }
 
-  async upsert(ticker: string, dto: CreateDailyPriceDto): Promise<DailyPrice> {
+  async upsert(
+    ticker: string,
+    dto: CreateDailyPriceDto,
+    updateForeignNetBuy = true,
+  ): Promise<DailyPrice> {
     const stock = await this.stockService.findOne(ticker);
+
+    const updateCols = ['open', 'high', 'low', 'close', 'volume', 'changeRate'];
+    if (updateForeignNetBuy) updateCols.push('foreignNetBuy');
 
     await this.priceRepo
       .createQueryBuilder()
       .insert()
       .into(DailyPrice)
       .values({ ...dto, stock })
-      .orUpdate(
-        ['open', 'high', 'low', 'close', 'volume', 'foreign_net_buy'],
-        ['stock_id', 'date'],
-      )
+      .orUpdate(updateCols, ['stockId', 'date'])
       .execute();
 
     return this.findOne(ticker, dto.date);

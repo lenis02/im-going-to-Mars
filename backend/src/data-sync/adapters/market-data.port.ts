@@ -5,18 +5,20 @@ export interface OhlcvDto {
   low: number;
   close: number;
   volume: number;
+  changeRate: number; // 전일 대비율 (기준가 기준, KIS 계산값)
 }
 
-export interface ForeignRankingDto {
-  ticker: string;
-  name: string;
-  accumulatedNetBuy: number; // 기간 누적 외인 순매수량
+export interface DailyInvestorDto {
+  date: string;
+  foreignNetBuy: number;
 }
 
 export interface MarketDataPort {
   fetchDailyPrices(ticker: string, from: Date, to: Date): Promise<OhlcvDto[]>;
-  fetchForeignNetBuyRanking(
+  fetchInvestorTradeDailyByStock(
+    ticker: string,
     market: 'J' | 'Q',
-    days: number,
-  ): Promise<ForeignRankingDto[]>;
+    from: Date,
+    to: Date,
+  ): Promise<DailyInvestorDto[]>;
 }

@@ -4,7 +4,10 @@
       "Bash(git update-ref *)",
       "Bash(npm install *)",
       "Bash(npm run *)",
-      "Bash(npx nest *)"
+      "Bash(npx nest *)",
+      "Bash(npm create *)",
+      "Bash(PGPASSWORD=1234 psql -h localhost -U postgres -d practice_stock -c 'SELECT date, \"foreignNetBuy\" FROM daily_price ORDER BY date DESC LIMIT 10;')",
+      "Bash(docker exec imgoingtomars-db-1 *)"
     ]
   }
 }

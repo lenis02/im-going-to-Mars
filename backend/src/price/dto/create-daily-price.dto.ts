@@ -26,4 +26,7 @@ export class CreateDailyPriceDto {
 
   @IsInt()
   foreignNetBuy: number;
+
+  @IsNumber()
+  changeRate: number;
 }

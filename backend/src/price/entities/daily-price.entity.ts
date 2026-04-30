@@ -36,4 +36,7 @@ export class DailyPrice {
 
   @Column({ type: 'bigint', default: 0 })
   foreignNetBuy: number;
+
+  @Column({ type: 'numeric', precision: 8, scale: 4, default: 0 })
+  changeRate: number;
 }

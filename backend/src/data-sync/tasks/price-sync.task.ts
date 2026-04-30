@@ -6,9 +6,6 @@ import { PriceService } from '../../price/price.service';
 import { KisAdapter } from '../adapters/kis/kis-adapter';
 import { Market } from '../../stock/entities/stock.entity';
 
-const RANKING_DAYS = 5; // 1주일(5거래일) 누적 순매수 기준
-const TOP_N = 50; // 상위 50종목 수집
-
 @Injectable()
 export class PriceSyncTask {
   private readonly logger = new Logger(PriceSyncTask.name);
@@ -21,57 +18,74 @@ export class PriceSyncTask {
 
   @Cron('0 18 * * 1-5')
   async run(): Promise<void> {
-    this.logger.log('외인 순매수 순위 기반 일봉 동기화 시작');
+    try {
+      await this.sync();
+    } catch (err) {
+      this.logger.error(
+        `동기화 중 치명적 오류 발생: ${(err as Error).message}`,
+        (err as Error).stack,
+      );
+    }
+  }
 
-    // KOSPI + KOSDAQ 순위를 합산해서 상위 N개 추출
-    const [kospiRanking, kosdaqRanking] = await Promise.all([
-      this.kisAdapter.fetchForeignNetBuyRanking('J', RANKING_DAYS),
-      this.kisAdapter.fetchForeignNetBuyRanking('Q', RANKING_DAYS),
-    ]);
+  private async sync(): Promise<void> {
+    const stocks = await this.stockService.findAll();
 
-    const ranking = [...kospiRanking, ...kosdaqRanking]
-      .sort((a, b) => b.accumulatedNetBuy - a.accumulatedNetBuy)
-      .slice(0, TOP_N);
+    if (stocks.length === 0) {
+      this.logger.log('등록된 종목 없음. POST /stocks 로 종목을 추가하세요.');
+      return;
+    }
 
-    this.logger.log(`순위 수집 완료: ${ranking.length}개 종목`);
+    this.logger.log(`일봉 + 외인 순매수 동기화 시작: ${stocks.length}개 종목`);
 
     const to = new Date();
-    const from = subDays(to, 30); // 최근 30일 일봉 동기화
+    const from = subDays(to, 30);
     let successCount = 0;
     let failCount = 0;
 
-    for (const item of ranking) {
+    for (const stock of stocks) {
       try {
-        // 종목 마스터에 없으면 자동 등록
-        const market = kospiRanking.some((r) => r.ticker === item.ticker)
-          ? Market.KOSPI
-          : Market.KOSDAQ;
+        const market = stock.market === Market.KOSPI ? 'J' : 'Q';
 
-        await this.stockService.upsert({
-          ticker: item.ticker,
-          name: item.name,
-          market,
-        });
-
-        // 일봉 수집 (foreignNetBuy는 순위에서 받은 주간 누적값 사용)
         const prices = await this.kisAdapter.fetchDailyPrices(
-          item.ticker,
+          stock.ticker,
           from,
           to,
         );
 
+        if (prices.length === 0) {
+          this.logger.warn(`${stock.ticker} OHLCV 없음, 스킵`);
+          successCount++;
+          continue;
+        }
+
+        // OHLCV 최신 거래일 기준으로 투자자 API 호출 (미래/비거래일 방지)
+        const latestTradingDate = new Date(prices[0].date);
+        const investorData = await this.kisAdapter.fetchInvestorTradeDailyByStock(
+          stock.ticker,
+          market,
+          from,
+          latestTradingDate,
+        );
+
+        const investorMap = new Map(
+          investorData.map((d) => [d.date, d.foreignNetBuy]),
+        );
+
         for (const price of prices) {
-          await this.priceService.upsert(item.ticker, {
-            ...price,
-            foreignNetBuy: item.accumulatedNetBuy,
-          });
+          const foreignNetBuy = investorMap.get(price.date);
+          await this.priceService.upsert(
+            stock.ticker,
+            { ...price, foreignNetBuy: foreignNetBuy ?? 0 },
+            foreignNetBuy !== undefined,
+          );
         }
 
         successCount++;
       } catch (err) {
         failCount++;
         this.logger.error(
-          `동기화 실패: ${item.ticker} — ${(err as Error).message}`,
+          `동기화 실패: ${stock.ticker} — ${(err as Error).message}`,
         );
       }
     }

@@ -5,6 +5,14 @@ import { Stock } from './entities/stock.entity';
 import { CreateStockDto } from './dto/create-stock.dto';
 import { UpdateStockDto } from './dto/update-stock.dto';
 
+export interface ForeignRankingRow {
+  ticker: string;
+  name: string;
+  market: string;
+  foreignNetBuy: number;
+  date: string;
+}
+
 @Injectable()
 export class StockService {
   constructor(
@@ -14,6 +22,25 @@ export class StockService {
 
   findAll(): Promise<Stock[]> {
     return this.stockRepo.find({ order: { ticker: 'ASC' } });
+  }
+
+  findForeignRanking(): Promise<ForeignRankingRow[]> {
+    return this.stockRepo.query(`
+      SELECT
+        s.ticker,
+        s.name,
+        s.market,
+        SUM(dp."foreignNetBuy") AS "foreignNetBuy",
+        to_char(MAX(dp.date), 'YYYY-MM-DD') AS date
+      FROM stock s
+      JOIN (
+        SELECT *,
+          ROW_NUMBER() OVER (PARTITION BY "stockId" ORDER BY date DESC) AS rn
+        FROM daily_price
+      ) dp ON dp."stockId" = s.id AND dp.rn <= 7
+      GROUP BY s.id, s.ticker, s.name, s.market
+      ORDER BY SUM(dp."foreignNetBuy") DESC
+    `);
   }
 
   async findOne(ticker: string): Promise<Stock> {
