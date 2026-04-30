@@ -117,7 +117,7 @@ export class PriceService {
       close: Number(p.close),
     }));
     const { patternName, category: patternCategory } =
-      detector.detectPattern(recentCandles);
+      await detector.detectPattern(recentCandles);
 
     const noPattern =
       patternName === '식별된 패턴 없음' || patternName === '데이터 없음';

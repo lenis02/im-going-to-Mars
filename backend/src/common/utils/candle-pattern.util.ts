@@ -1,40 +1,5 @@
-/**
- * 캔들 패턴 탐지 유틸리티
- *
- * technicalindicators 라이브러리(23개) + 커스텀 구현(5개) = 총 28개 패턴 커버
- * 여러 패턴이 동시에 감지될 경우 CATEGORY_PRIORITY 기준으로 가장 강한 신호를 반환한다.
- */
+import Groq from 'groq-sdk';
 
-// 1. [수정됨] 모든 패턴을 소문자 함수형 래퍼로 통일하여 import 하고, 누락된 upsidetasukigap 추가
-import {
-  bullishengulfingpattern,
-  bearishengulfingpattern,
-  bullishharami,
-  bearishharami,
-  bullishharamicross,
-  bearishharamicross,
-  hammerpattern,
-  bullishinvertedhammerstick,
-  hangingmanunconfirmed,
-  shootingstarunconfirmed,
-  morningstar,
-  eveningstar,
-  morningdojistar,
-  eveningdojistar,
-  threewhitesoldiers,
-  threeblackcrows,
-  bullishmarubozu,
-  bearishmarubozu,
-  piercingline,
-  darkcloudcover,
-  downsidetasukigap,
-} from 'technicalindicators';
-
-// ─────────────────────────────────────────────
-// 타입 정의
-// ─────────────────────────────────────────────
-
-/** 캔들 하나의 OHLC 데이터 */
 export interface Price {
   open: number;
   high: number;
@@ -54,184 +19,140 @@ export interface PatternResult {
   category: CandleCategory | null;
 }
 
-// ─────────────────────────────────────────────
-// 카테고리 우선순위
-// ─────────────────────────────────────────────
+const FALLBACK: PatternResult = { patternName: '식별된 패턴 없음', category: null };
 
-const CATEGORY_PRIORITY: Record<CandleCategory, number> = {
-  '하락 전환형': 50,
-  '상승 전환형': 40,
-  '추세 반전형': 30,
-  '추세 지속형': 20,
-  '단일 캔들 패턴': 10,
-};
-
-// ─────────────────────────────────────────────
-// technicalindicators 라이브러리 패턴 정의
-// ─────────────────────────────────────────────
-
-// 2. [수정됨] checker 타입을 클래스가 아닌 소문자 함수 자체로 변경
-interface LibraryPatternDef {
-  patternName: string;
-  category: CandleCategory;
-  checker: (input: {
-    open: number[];
-    high: number[];
-    close: number[];
-    low: number[];
-  }) => boolean;
-  minCandles: number;
-}
-
-// 3. [수정됨] checker 매핑을 전부 import 해온 소문자 함수로 교체
-const LIBRARY_PATTERNS: LibraryPatternDef[] = [
-  // ── 상승 전환형 (6개) ─────────────────────────────────────────
-  { patternName: '상승 장악형', category: '상승 전환형', checker: bullishengulfingpattern, minCandles: 2 },
-  { patternName: '역망치형', category: '상승 전환형', checker: bullishinvertedhammerstick, minCandles: 1 },
-  { patternName: '관통형', category: '상승 전환형', checker: piercingline, minCandles: 2 },
-  { patternName: '샛별형', category: '상승 전환형', checker: morningstar, minCandles: 3 },
-  { patternName: '샛별 도지형', category: '상승 전환형', checker: morningdojistar, minCandles: 3 },
-  { patternName: '적삼병', category: '상승 전환형', checker: threewhitesoldiers, minCandles: 3 },
-
-  // ── 하락 전환형 (8개) ─────────────────────────────────────────
-  { patternName: '하락 장악형', category: '하락 전환형', checker: bearishengulfingpattern, minCandles: 2 },
-  { patternName: '교수형', category: '하락 전환형', checker: hangingmanunconfirmed, minCandles: 1 },
-  { patternName: '유성형', category: '하락 전환형', checker: shootingstarunconfirmed, minCandles: 1 },
-  { patternName: '먹구름형', category: '하락 전환형', checker: darkcloudcover, minCandles: 2 },
-  { patternName: '석별형', category: '하락 전환형', checker: eveningstar, minCandles: 3 },
-  { patternName: '석별 도지형', category: '하락 전환형', checker: eveningdojistar, minCandles: 3 },
-  { patternName: '흑삼병', category: '하락 전환형', checker: threeblackcrows, minCandles: 3 },
-
-  // ── 추세 반전형 (5개) ─────────────────────────────────────────
-  { patternName: '망치형', category: '추세 반전형', checker: hammerpattern, minCandles: 1 },
-  { patternName: '상승 잉태형', category: '추세 반전형', checker: bullishharami, minCandles: 2 },
-  { patternName: '하락 잉태형', category: '추세 반전형', checker: bearishharami, minCandles: 2 },
-  { patternName: '상승 잉태 십자형', category: '추세 반전형', checker: bullishharamicross, minCandles: 2 },
-  { patternName: '하락 잉태 십자형', category: '추세 반전형', checker: bearishharamicross, minCandles: 2 },
-
-  // ── 추세 지속형 (4개) ─────────────────────────────────────────
-  { patternName: '상승 마루보주', category: '추세 지속형', checker: bullishmarubozu, minCandles: 1 },
-  { patternName: '하락 마루보주', category: '추세 지속형', checker: bearishmarubozu, minCandles: 1 },
-  { patternName: '하락 타스키 갭', category: '추세 지속형', checker: downsidetasukigap, minCandles: 3 },
+const VALID_CATEGORIES: CandleCategory[] = [
+  '상승 전환형',
+  '하락 전환형',
+  '단일 캔들 패턴',
+  '추세 지속형',
+  '추세 반전형',
 ];
 
-// ─────────────────────────────────────────────
-// 커스텀 패턴 구현 헬퍼
-// ─────────────────────────────────────────────
+// 09:00 ~ 15:30 장 중 (분 단위)
+const MARKET_OPEN = 9 * 60;
+const MARKET_CLOSE = 15 * 60 + 30;
 
-function bodySize(c: Price): number {
-  return Math.abs(c.close - c.open);
+function getSeoulDateInfo(): { date: string; totalMinutes: number } {
+  // sv-SE locale은 "YYYY-MM-DD HH:MM:SS" 형식을 반환
+  const seoulStr = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' });
+  const [datePart, timePart] = seoulStr.split(' ');
+  const [hours, minutes] = timePart.split(':').map(Number);
+  return { date: datePart, totalMinutes: hours * 60 + minutes };
 }
 
-function range(c: Price): number {
-  return c.high - c.low;
+function prevDay(dateStr: string): string {
+  const d = new Date(`${dateStr}T12:00:00+09:00`);
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().slice(0, 10);
 }
-
-function upperShadow(c: Price): number {
-  return c.high - Math.max(c.open, c.close);
-}
-
-function lowerShadow(c: Price): number {
-  return Math.min(c.open, c.close) - c.low;
-}
-
-function isDoji(c: Price): boolean {
-  const r = range(c);
-  if (r === 0) return true;
-  return bodySize(c) / r <= 0.05;
-}
-
-function isGravestoneDoji(c: Price): boolean {
-  if (!isDoji(c)) return false;
-  const r = range(c);
-  if (r === 0) return false;
-  return upperShadow(c) / r >= 0.67 && lowerShadow(c) / r <= 0.1;
-}
-
-function isDragonflyDoji(c: Price): boolean {
-  if (!isDoji(c)) return false;
-  const r = range(c);
-  if (r === 0) return false;
-  return lowerShadow(c) / r >= 0.67 && upperShadow(c) / r <= 0.1;
-}
-
-function isTweezerBottom(prev: Price, curr: Price): boolean {
-  if (prev.close >= prev.open) return false;
-  if (curr.close <= curr.open) return false;
-  const avgLow = (prev.low + curr.low) / 2;
-  if (avgLow === 0) return false;
-  return Math.abs(prev.low - curr.low) / avgLow <= 0.002;
-}
-
-function isTweezerTop(prev: Price, curr: Price): boolean {
-  if (prev.close <= prev.open) return false;
-  if (curr.close >= curr.open) return false;
-  const avgHigh = (prev.high + curr.high) / 2;
-  if (avgHigh === 0) return false;
-  return Math.abs(prev.high - curr.high) / avgHigh <= 0.002;
-}
-
-// ─────────────────────────────────────────────
-// CandlePatternDetector 클래스
-// ─────────────────────────────────────────────
 
 export class CandlePatternDetector {
-  public detectPattern(recentData: Price[]): PatternResult {
+  private readonly groq: Groq;
+  private readonly cache = new Map<string, PatternResult>();
+
+  constructor() {
+    this.groq = new Groq({ apiKey: process.env.GROQ_API_KEY ?? '' });
+  }
+
+  // 장 중이면 null(캐시 무시), 그 외에는 날짜 기반 키 반환
+  private getCacheKey(last5: Price[]): string | null {
+    const { date, totalMinutes } = getSeoulDateInfo();
+
+    if (totalMinutes >= MARKET_OPEN && totalMinutes < MARKET_CLOSE) {
+      return null; // 장 중: 캐시 미사용
+    }
+
+    // 09:00 이전이면 전날 마감 기준, 15:30 이후면 당일 기준
+    const dateKey = totalMinutes < MARKET_OPEN ? prevDay(date) : date;
+    return `${dateKey}:${JSON.stringify(last5)}`;
+  }
+
+  async detectPattern(recentData: Price[]): Promise<PatternResult> {
     if (recentData.length === 0) {
       return { patternName: '데이터 없음', category: null };
     }
 
-    const detected: Array<{ patternName: string; category: CandleCategory }> = [];
+    const last5 = recentData.slice(-5);
+    const cacheKey = this.getCacheKey(last5);
 
-    for (const def of LIBRARY_PATTERNS) {
-      if (recentData.length < def.minCandles) continue;
-
-      try {
-        const sliced = recentData;
-        const ohlc = {
-          open: sliced.map(d => d.open),
-          high: sliced.map(d => d.high),
-          low: sliced.map(d => d.low),
-          close: sliced.map(d => d.close),
-        };
-
-        if (def.checker(ohlc)) {
-          detected.push({ patternName: def.patternName, category: def.category });
-        }
-      } catch {
-        console.error(`[Pattern Error] ${def.patternName}`);
+    if (cacheKey !== null) {
+      const cached = this.cache.get(cacheKey);
+      if (cached) {
+        console.log('[CandlePattern] cache hit:', cacheKey);
+        return cached;
       }
+    } else {
+      console.log('[CandlePattern] 장 중 — 캐시 무시, Groq 호출');
     }
 
-    const curr = recentData[recentData.length - 1];
-    const prev = recentData.length >= 2 ? recentData[recentData.length - 2] : null;
+    const candleText = last5
+      .map(
+        (c, i) =>
+          `Day${i + 1}: open=${c.open}, high=${c.high}, low=${c.low}, close=${c.close}`,
+      )
+      .join('\n');
 
-    if (isGravestoneDoji(curr)) {
-      detected.push({ patternName: '비석형 도지', category: '하락 전환형' });
-    } else if (isDragonflyDoji(curr)) {
-      detected.push({ patternName: '잠자리형 도지', category: '상승 전환형' });
-    } else if (isDoji(curr)) {
-      detected.push({ patternName: '십자형', category: '단일 캔들 패턴' });
-    }
+    const prompt = `다음은 최근 ${last5.length}개의 OHLC 캔들 데이터입니다 (오래된 순서).
+${candleText}
 
-    if (prev) {
-      if (isTweezerBottom(prev, curr)) {
-        detected.push({ patternName: '트위저 바텀', category: '추세 반전형' });
+이 데이터를 분석하여 가장 최근 캔들 기준으로 캔들스틱 패턴을 하나만 식별하세요.
+
+반드시 아래 패턴 목록 중 하나로만 답하세요. 목록에 없는 패턴명은 절대 사용하지 마세요.
+
+[패턴 목록]
+상승 전환형: 망치형, 역망치형, 상승 장악형, 관통형, 샛별형, 샛별 도지형, 적삼병, 잠자리형 도지, 트위저 바텀
+하락 전환형: 교수형, 유성형, 하락 장악형, 먹구름형, 석별형, 석별 도지형, 흑삼병, 비석형 도지, 트위저 탑
+추세 반전형: 상승 잉태형, 하락 잉태형, 상승 잉태 십자형, 하락 잉태 십자형
+추세 지속형: 상승 마루보주, 하락 마루보주, 하락 타스키 갭
+단일 캔들 패턴: 십자형
+
+위 목록에 해당하는 패턴이 없으면 patternName을 "식별된 패턴 없음", category를 null로 하세요.
+
+반드시 아래 JSON 형식으로만 응답하세요. 마크다운이나 다른 텍스트는 절대 포함하지 마세요.
+{"patternName": "패턴명", "category": "카테고리"}
+
+category는 반드시 다음 중 하나이거나 null이어야 합니다:
+"상승 전환형", "하락 전환형", "단일 캔들 패턴", "추세 지속형", "추세 반전형"`;
+
+    console.log('[CandlePattern] prompt:\n', prompt);
+
+    try {
+      const response = await this.groq.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+      });
+
+      const raw = response.choices[0]?.message?.content?.trim() ?? '';
+      console.log('[CandlePattern] raw response:', raw);
+
+      const jsonStr = raw
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```$/, '')
+        .trim();
+
+      const parsed = JSON.parse(jsonStr) as {
+        patternName: unknown;
+        category: unknown;
+      };
+      console.log('[CandlePattern] parsed:', parsed);
+
+      if (typeof parsed.patternName !== 'string') return FALLBACK;
+
+      const category = VALID_CATEGORIES.includes(parsed.category as CandleCategory)
+        ? (parsed.category as CandleCategory)
+        : null;
+
+      const result: PatternResult = { patternName: parsed.patternName, category };
+
+      if (cacheKey !== null) {
+        this.cache.set(cacheKey, result);
       }
-      if (isTweezerTop(prev, curr)) {
-        detected.push({ patternName: '트위저 탑', category: '추세 반전형' });
-      }
+
+      return result;
+    } catch (e) {
+      console.log('[CandlePattern] error:', e instanceof Error ? e.message : String(e));
+      return FALLBACK;
     }
-
-    if (detected.length === 0) {
-      return { patternName: '식별된 패턴 없음', category: null };
-    }
-
-    detected.sort(
-      (a, b) => CATEGORY_PRIORITY[b.category] - CATEGORY_PRIORITY[a.category],
-    );
-
-    const winner = detected[0];
-    return { patternName: winner.patternName, category: winner.category };
   }
 }
