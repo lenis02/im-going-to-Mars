@@ -26,6 +26,12 @@ export class PriceController {
     return { data, meta: { ticker, count: data.length } };
   }
 
+  @Get('signal')
+  async getSignal(@Param('ticker') ticker: string) {
+    const data = await this.priceService.getSignal(ticker);
+    return { data };
+  }
+
   @Get(':date')
   async findOne(@Param('ticker') ticker: string, @Param('date') date: string) {
     const data = await this.priceService.findOne(ticker, date);
