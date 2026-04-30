@@ -64,14 +64,14 @@ function CandlestickSVGChart({
       <svg width={width} height={height} onMouseMove={handleMouseMove} onMouseLeave={() => setHoverIdx(null)}>
         {yTicks.map((v, i) => (
           <g key={i}>
-            <line x1={margin.left} y1={yPos(v)} x2={margin.left + plotW} y2={yPos(v)} stroke="#f3f4f6" strokeWidth={0.5} />
-            <text x={margin.left - 4} y={yPos(v) + 3} textAnchor="end" fontSize={10} fill="#9ca3af">
+            <line x1={margin.left} y1={yPos(v)} x2={margin.left + plotW} y2={yPos(v)} stroke="#262626" strokeWidth={0.5} />
+            <text x={margin.left - 4} y={yPos(v) + 3} textAnchor="end" fontSize={10} fill="#a3a3a3">
               {(v / 1000).toFixed(0)}k
             </text>
           </g>
         ))}
         {xLabelIndices.map((i) => (
-          <text key={i} x={xPos(i)} y={height - 5} textAnchor="middle" fontSize={10} fill="#9ca3af">
+          <text key={i} x={xPos(i)} y={height - 5} textAnchor="middle" fontSize={10} fill="#a3a3a3">
             {data[i]?.date}
           </text>
         ))}
@@ -91,19 +91,19 @@ function CandlestickSVGChart({
         })}
         {hoverIdx !== null && (
           <line x1={xPos(hoverIdx)} y1={margin.top} x2={xPos(hoverIdx)} y2={margin.top + plotH}
-            stroke="#9ca3af" strokeWidth={0.5} strokeDasharray="3,3" />
+            stroke="#525252" strokeWidth={0.5} strokeDasharray="3,3" />
         )}
       </svg>
       {hd && hoverIdx !== null && (
         <div
           style={{ position: 'absolute', left: Math.min(xPos(hoverIdx) + 8, width - 110), top: margin.top, pointerEvents: 'none' }}
-          className="bg-white border border-gray-100 rounded-xl px-3 py-2 text-xs shadow-sm z-10"
+          className="bg-[#1c1c1c] border border-[#262626] rounded-sm px-3 py-2 text-xs z-10"
         >
-          <p className="font-medium text-gray-500 mb-1">{hd.date}</p>
-          <p>시&nbsp;<span className="font-mono">{hd.open.toLocaleString()}</span></p>
-          <p>고&nbsp;<span className="font-mono text-red-500">{hd.high.toLocaleString()}</span></p>
-          <p>저&nbsp;<span className="font-mono text-blue-500">{hd.low.toLocaleString()}</span></p>
-          <p>종&nbsp;<span className={`font-mono font-semibold ${hd.close >= hd.open ? 'text-red-500' : 'text-blue-500'}`}>{hd.close.toLocaleString()}</span></p>
+          <p className="text-[#a3a3a3] mb-1">{hd.date}</p>
+          <p className="text-[#e5e5e5]">시&nbsp;<span className="font-mono">{hd.open.toLocaleString()}</span></p>
+          <p className="text-[#e5e5e5]">고&nbsp;<span className="font-mono">{hd.high.toLocaleString()}</span></p>
+          <p className="text-[#e5e5e5]">저&nbsp;<span className="font-mono">{hd.low.toLocaleString()}</span></p>
+          <p className={`font-mono font-semibold ${hd.close >= hd.open ? 'text-[#ef4444]' : 'text-[#3b82f6]'}`}>종&nbsp;{hd.close.toLocaleString()}</p>
         </div>
       )}
     </div>
@@ -111,16 +111,16 @@ function CandlestickSVGChart({
 }
 
 const VERDICT_CONFIG = {
-  entry: { label: '매수 추천', className: 'bg-red-50 text-red-600 border-red-100' },
-  watch: { label: '관찰 중', className: 'bg-yellow-50 text-yellow-600 border-yellow-100' },
-  exit: { label: '매수 비추천', className: 'bg-blue-50 text-blue-600 border-blue-100' },
+  entry: { label: '매수 추천', className: 'bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/30' },
+  watch: { label: '관찰 중',   className: 'bg-[#1c1c1c] text-[#a3a3a3] border border-[#333]' },
+  exit:  { label: '매수 비추천', className: 'bg-[#ef4444]/10 text-[#ef4444] border border-[#ef4444]/30' },
 }
 
 const SIGNAL_CONFIG = {
-  entry:    { label: '스윙 진입',     text: 'text-red-600',   dot: 'bg-red-500' },
-  exit:     { label: '과열/하락 경고', text: 'text-blue-600',  dot: 'bg-blue-500' },
-  interest: { label: '관심 집중',     text: 'text-amber-600', dot: 'bg-amber-500' },
-  watch:    { label: '조건 대기',      text: 'text-gray-700',  dot: 'bg-gray-400' },
+  entry:    { label: '스윙 진입',     text: 'text-[#22c55e]', dot: 'bg-[#22c55e]' },
+  exit:     { label: '과열/하락 경고', text: 'text-[#ef4444]', dot: 'bg-[#ef4444]' },
+  interest: { label: '관심 집중',     text: 'text-[#f59e0b]', dot: 'bg-[#f59e0b]' },
+  watch:    { label: '조건 대기',     text: 'text-[#a3a3a3]', dot: 'bg-[#737373]' },
 }
 
 function signalStatusToKey(status: StockSignal['status']): keyof typeof SIGNAL_CONFIG {
@@ -173,7 +173,7 @@ export default function StockAnalysis({ ticker }: Props) {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-8 text-center text-sm text-gray-400">
+      <div className="bg-[#141414] border border-[#262626] rounded-sm px-6 py-8 text-center text-sm text-[#a3a3a3]">
         분석 중...
       </div>
     )
@@ -181,7 +181,7 @@ export default function StockAnalysis({ ticker }: Props) {
 
   if (error || prices.length === 0) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-8 text-center text-sm text-gray-400">
+      <div className="bg-[#141414] border border-[#262626] rounded-sm px-6 py-8 text-center text-sm text-[#a3a3a3]">
         {error ?? '동기화 후 분석이 가능합니다. POST /data-sync/prices를 실행해주세요.'}
       </div>
     )
@@ -189,7 +189,6 @@ export default function StockAnalysis({ ticker }: Props) {
 
   const sorted = [...prices].sort((a, b) => a.date.localeCompare(b.date))
 
-  // 모달에 표시할 수치 계산
   let consecutiveForeignBuyDays = 0
   for (let i = sorted.length - 1; i >= 0; i--) {
     if (Number(sorted[i].foreignNetBuy) > 0) consecutiveForeignBuyDays++
@@ -209,7 +208,7 @@ export default function StockAnalysis({ ticker }: Props) {
   const latestClose = quote?.price ?? Number(latestP.close)
   const latestChangeRate = quote?.changeRate ?? 0
   const isUp = latestChangeRate >= 0
-  const changeColor = isUp ? 'text-red-500' : 'text-blue-500'
+  const changeColor = isUp ? 'text-[#ef4444]' : 'text-[#3b82f6]'
 
   const candleChartData: CandleEntry[] = sorted.map((p) => ({
     date: p.date.slice(5),
@@ -226,23 +225,23 @@ export default function StockAnalysis({ ticker }: Props) {
 
   return (
     <>
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-[#141414] border border-[#262626] rounded-sm overflow-hidden">
         {/* 헤더 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#262626]">
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-mono font-medium text-blue-600 text-sm">{ticker}</span>
-              {stock && <span className="font-semibold text-gray-900">{stock.name}</span>}
+              <span className="font-mono font-medium text-[#22c55e] text-sm">{ticker}</span>
+              {stock && <span className="font-semibold text-white">{stock.name}</span>}
             </div>
             <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-xl font-bold text-gray-900">{latestClose.toLocaleString()}원</span>
-              <span className={`text-sm font-medium ${changeColor}`}>
+              <span className="text-xl font-bold font-mono text-white">{latestClose.toLocaleString()}원</span>
+              <span className={`text-sm font-medium font-mono ${changeColor}`}>
                 {isUp ? '+' : ''}{latestChangeRate.toFixed(2)}%
               </span>
             </div>
-            <p className="text-xs text-gray-400 mt-0.5">전일 대비 · 최근 30일 분석</p>
+            <p className="text-xs text-[#a3a3a3] mt-0.5">전일 대비 · 최근 30일 분석</p>
           </div>
-          <span className={`px-3 py-1 text-sm font-semibold rounded-full border ${verdictConfig.className}`}>
+          <span className={`px-3 py-1 text-xs font-semibold rounded-sm ${verdictConfig.className}`}>
             {verdictConfig.label}
           </span>
         </div>
@@ -250,8 +249,8 @@ export default function StockAnalysis({ ticker }: Props) {
         <div className="px-6 pt-5 pb-6 grid grid-cols-10 gap-6">
           {/* 캔들차트 */}
           <div className="col-span-7">
-            <p className="text-xs font-medium text-gray-500 mb-2">
-              캔들차트 <span className="text-gray-300 font-normal">(수정주가 기준)</span>
+            <p className="text-xs font-medium text-[#a3a3a3] mb-2">
+              캔들차트 <span className="text-[#a3a3a3] font-normal">(수정주가 기준)</span>
             </p>
             <div ref={candleRef} style={{ height: 160 }}>
               {candleW > 0 && (
@@ -264,14 +263,14 @@ export default function StockAnalysis({ ticker }: Props) {
           <div className="col-span-3 flex flex-col justify-between gap-1">
             {/* 매매 시그널 */}
             <div className="text-center">
-              <p className="text-[10px] text-gray-400 font-medium mb-1.5">매매 시그널</p>
+              <p className="text-[10px] text-[#a3a3a3] font-medium mb-1.5 uppercase tracking-wider">매매 시그널</p>
               <button
                 onClick={() => signal && setShowModal(true)}
-                className="inline-flex flex-col items-center gap-0.5 group"
+                className="inline-flex flex-col items-center gap-0.5 group cursor-pointer"
               >
                 <div className="flex items-center gap-2">
-                  <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${sig.dot}`} />
-                  <span className={`text-xl font-bold ${sig.text} group-hover:underline underline-offset-2`}>
+                  <span className={`inline-block w-1.5 h-1.5 rounded-sm flex-shrink-0 ${sig.dot}`} />
+                  <span className={`text-lg font-bold ${sig.text} group-hover:underline underline-offset-2`}>
                     {sig.label}
                   </span>
                 </div>
@@ -285,21 +284,21 @@ export default function StockAnalysis({ ticker }: Props) {
 
             {/* 7일 누적 외인 순매수 */}
             <div className="flex flex-col items-center gap-1 pb-3">
-              <p className="text-xs font-medium text-gray-500">7일 누적 외인 순매수</p>
+              <p className="text-[10px] font-medium text-[#a3a3a3] uppercase tracking-wider">7일 누적 외인 순매수</p>
               {(() => {
                 const latest = netBuyChartData[netBuyChartData.length - 1]
                 const sum = latest?.sum ?? 0
                 const isPositive = sum >= 0
                 return (
                   <span
-                    className={`font-bold tabular-nums ${isPositive ? 'text-red-500' : 'text-blue-500'}`}
+                    className={`font-bold font-mono tabular-nums ${isPositive ? 'text-[#22c55e]' : 'text-[#3b82f6]'}`}
                     style={{ fontSize: '22px', lineHeight: 1.2 }}
                   >
                     {isPositive ? '+' : ''}{sum.toLocaleString()}
                   </span>
                 )
               })()}
-              <p className="text-xs text-gray-400">주</p>
+              <p className="text-xs text-[#a3a3a3]">주</p>
             </div>
           </div>
         </div>
@@ -311,20 +310,20 @@ export default function StockAnalysis({ ticker }: Props) {
           className="fixed inset-0 z-50 flex items-center justify-center"
           onClick={() => { setShowModal(false); setShowConditions(false) }}
         >
-          <div className="absolute inset-0 bg-black/30" />
+          <div className="absolute inset-0 bg-black/60" />
           <div
-            className="relative bg-white rounded-2xl shadow-xl w-80 mx-4 overflow-hidden"
+            className="relative bg-[#141414] border border-[#262626] rounded-sm w-80 mx-4 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* 모달 헤더 */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#262626]">
               <div className="flex items-center gap-2">
-                <span className={`inline-block w-2 h-2 rounded-full ${sig.dot}`} />
+                <span className={`inline-block w-1.5 h-1.5 rounded-sm ${sig.dot}`} />
                 <h3 className={`font-bold text-base ${sig.text}`}>{sig.label}</h3>
               </div>
               <button
                 onClick={() => { setShowModal(false); setShowConditions(false) }}
-                className="text-gray-300 hover:text-gray-500 text-lg leading-none"
+                className="text-[#a3a3a3] hover:text-[#e5e5e5] text-lg leading-none cursor-pointer transition-colors"
               >
                 ✕
               </button>
@@ -332,54 +331,50 @@ export default function StockAnalysis({ ticker }: Props) {
 
             {/* 수치 항목 */}
             <div className="px-5 py-4 space-y-3">
-              {/* 외인 연속 순매수 */}
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">외인 연속 순매수</span>
-                <span className={`text-sm font-semibold tabular-nums ${consecutiveForeignBuyDays >= 3 ? 'text-red-500' : 'text-gray-400'}`}>
+                <span className="text-xs text-[#a3a3a3]">외인 연속 순매수</span>
+                <span className={`text-sm font-semibold font-mono tabular-nums ${consecutiveForeignBuyDays >= 3 ? 'text-[#22c55e]' : 'text-[#a3a3a3]'}`}>
                   {consecutiveForeignBuyDays}일 연속
                 </span>
               </div>
 
-              {/* 거래량 */}
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">거래량</span>
-                <span className={`text-sm font-semibold tabular-nums ${volumeRatioPct >= 150 ? 'text-red-500' : 'text-gray-400'}`}>
+                <span className="text-xs text-[#a3a3a3]">거래량</span>
+                <span className={`text-sm font-semibold font-mono tabular-nums ${volumeRatioPct >= 150 ? 'text-[#22c55e]' : 'text-[#a3a3a3]'}`}>
                   전일 대비 {volumeRatioPct.toFixed(0)}%
                 </span>
               </div>
 
-              {/* 전일 대비 등락율 */}
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">전일 대비 등락율</span>
-                <span className={`text-sm font-semibold tabular-nums ${latestChangeRate > 0 ? 'text-red-500' : latestChangeRate < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
+                <span className="text-xs text-[#a3a3a3]">전일 대비 등락율</span>
+                <span className={`text-sm font-semibold font-mono tabular-nums ${latestChangeRate > 0 ? 'text-[#ef4444]' : latestChangeRate < 0 ? 'text-[#3b82f6]' : 'text-[#a3a3a3]'}`}>
                   {latestChangeRate >= 0 ? '+' : ''}{latestChangeRate.toFixed(2)}%
                 </span>
               </div>
 
-              {/* 캔들 패턴 */}
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">캔들 패턴</span>
+                <span className="text-xs text-[#a3a3a3]">캔들 패턴</span>
                 <div className="text-right">
-                  <p className="text-sm font-semibold text-gray-700">
+                  <p className="text-sm font-semibold text-[#e5e5e5]">
                     {signal.patternName || '식별 없음'}
                   </p>
                   {signal.patternCategory && (
-                    <p className="text-[11px] text-gray-400">{signal.patternCategory}</p>
+                    <p className="text-[11px] text-[#a3a3a3]">{signal.patternCategory}</p>
                   )}
                 </div>
               </div>
             </div>
 
             {/* 시그널 근거 */}
-            <div className="px-5 pb-4 pt-1 border-t border-gray-100">
-              <p className="text-xs text-gray-500 leading-relaxed">{signal.reason}</p>
+            <div className="px-5 pb-4 pt-1 border-t border-[#262626]">
+              <p className="text-sm text-[#e5e5e5] leading-relaxed">{signal.reason}</p>
             </div>
 
             {/* 추천 조건 상세 토글 */}
-            <div className="border-t border-gray-100">
+            <div className="border-t border-[#262626]">
               <button
                 onClick={() => setShowConditions((v) => !v)}
-                className="w-full flex items-center justify-between px-5 py-3 text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-between px-5 py-3 text-xs text-[#a3a3a3] hover:text-[#e5e5e5] hover:bg-[#1c1c1c] transition-colors cursor-pointer"
               >
                 <span>추천 조건 상세 보기</span>
                 <span className={`transition-transform duration-200 ${showConditions ? 'rotate-180' : ''}`}>▾</span>
@@ -388,9 +383,8 @@ export default function StockAnalysis({ ticker }: Props) {
               <div className={`overflow-hidden transition-all duration-300 ${showConditions ? 'max-h-96' : 'max-h-0'}`}>
                 <div className="px-5 pb-5 space-y-4">
 
-                  {/* 스윙 진입 */}
                   <div>
-                    <p className="text-[11px] font-bold text-red-500 mb-1.5">스윙 진입 <span className="font-normal text-gray-400">(세 조건 모두 충족)</span></p>
+                    <p className="text-[11px] font-bold text-[#22c55e] mb-1.5">스윙 진입 <span className="font-normal text-[#a3a3a3]">(세 조건 모두 충족)</span></p>
                     <div className="space-y-1">
                       {[
                         ['외인 연속 순매수', '3일 이상'],
@@ -398,16 +392,15 @@ export default function StockAnalysis({ ticker }: Props) {
                         ['전일 대비 등락율', '+1.5% ~ +6.0%'],
                       ].map(([label, value]) => (
                         <div key={label} className="flex justify-between text-[11px]">
-                          <span className="text-gray-400">{label}</span>
-                          <span className="text-gray-600 font-medium">{value}</span>
+                          <span className="text-[#a3a3a3]">{label}</span>
+                          <span className="text-[#e5e5e5] font-medium">{value}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* 관심 집중 */}
                   <div>
-                    <p className="text-[11px] font-bold text-amber-500 mb-1.5">관심 집중 <span className="font-normal text-gray-400">(일부 충족)</span></p>
+                    <p className="text-[11px] font-bold text-[#f59e0b] mb-1.5">관심 집중 <span className="font-normal text-[#a3a3a3]">(일부 충족)</span></p>
                     <div className="space-y-1">
                       {[
                         ['외인 연속 순매수', '2일 이상'],
@@ -415,16 +408,15 @@ export default function StockAnalysis({ ticker }: Props) {
                         ['전일 대비 등락율', '+1.0% ~ +3.0%'],
                       ].map(([label, value]) => (
                         <div key={label} className="flex justify-between text-[11px]">
-                          <span className="text-gray-400">{label}</span>
-                          <span className="text-gray-600 font-medium">{value}</span>
+                          <span className="text-[#a3a3a3]">{label}</span>
+                          <span className="text-[#e5e5e5] font-medium">{value}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* 과열/하락 경고 */}
                   <div>
-                    <p className="text-[11px] font-bold text-blue-500 mb-1.5">과열/하락 경고 <span className="font-normal text-gray-400">(하나라도 해당)</span></p>
+                    <p className="text-[11px] font-bold text-[#ef4444] mb-1.5">과열/하락 경고 <span className="font-normal text-[#a3a3a3]">(하나라도 해당)</span></p>
                     <div className="space-y-1">
                       {[
                         ['하락 전환형 캔들 패턴', '감지 시'],
@@ -432,8 +424,8 @@ export default function StockAnalysis({ ticker }: Props) {
                         ['거래량', '전일 대비 400% 이상'],
                       ].map(([label, value]) => (
                         <div key={label} className="flex justify-between text-[11px]">
-                          <span className="text-gray-400">{label}</span>
-                          <span className="text-gray-600 font-medium">{value}</span>
+                          <span className="text-[#a3a3a3]">{label}</span>
+                          <span className="text-[#e5e5e5] font-medium">{value}</span>
                         </div>
                       ))}
                     </div>

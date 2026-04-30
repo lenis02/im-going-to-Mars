@@ -54,23 +54,23 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect }
   useEffect(() => { void load() }, [refreshKey])
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+    <div className="bg-[#141414] border border-[#262626] rounded-sm overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-[#262626]">
         <div>
-          <h2 className="text-base font-semibold text-gray-900">최근 검색 종목</h2>
-          <p className="text-xs text-gray-400 mt-0.5">종목 클릭 시 분석 화면으로 이동 · 7일 누적 외인 순매수</p>
+          <h2 className="text-sm font-medium text-white tracking-tight">최근 검색 종목</h2>
+          <p className="text-xs text-[#a3a3a3] mt-0.5">종목 클릭 시 분석 화면으로 이동 · 7일 누적 외인 순매수</p>
         </div>
         <button
           onClick={() => void load()}
           disabled={loading}
-          className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 disabled:opacity-50 transition-colors"
+          className="px-3 py-1.5 text-xs font-medium text-[#a3a3a3] bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] hover:text-white disabled:opacity-50 transition-colors cursor-pointer"
         >
           {loading ? '로딩 중...' : '새로고침'}
         </button>
       </div>
 
       {error && (
-        <div className="mx-6 my-4 px-4 py-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-lg">
+        <div className="mx-6 my-4 px-4 py-3 bg-[#1c1c1c] border border-[#ef4444]/30 text-[#ef4444] text-sm rounded-sm">
           {error}
         </div>
       )}
@@ -78,21 +78,20 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect }
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+            <tr className="border-b border-[#1c1c1c] text-[#a3a3a3] text-xs uppercase tracking-wider">
               <th className="px-6 py-3 text-left font-medium">종목코드</th>
               <th className="px-6 py-3 text-left font-medium">종목명</th>
-              <th className="px-6 py-3 text-center font-medium">시장</th>
               <th className="px-6 py-3 text-right font-medium">7일 순매수</th>
               <th className="px-6 py-3 text-center font-medium">기준일</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className="divide-y divide-[#1c1c1c]">
             {loading ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <tr key={i}>
-                  {Array.from({ length: 5 }).map((__, j) => (
+                  {Array.from({ length: 4 }).map((__, j) => (
                     <td key={j} className="px-6 py-4">
-                      <div className="h-4 bg-gray-100 rounded animate-pulse" />
+                      <div className="h-3 bg-[#262626] rounded-sm animate-pulse" />
                     </td>
                   ))}
                 </tr>
@@ -104,35 +103,26 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect }
                   onClick={() => onSelect(row.ticker)}
                   className={`cursor-pointer transition-colors ${
                     selectedTicker === row.ticker
-                      ? 'bg-blue-50'
-                      : 'hover:bg-gray-50'
+                      ? 'bg-[#1c1c1c]'
+                      : 'hover:bg-[#1a1a1a]'
                   }`}
                 >
-                  <td className="px-6 py-4 font-mono font-medium text-blue-600">
+                  <td className="px-6 py-4 font-mono font-medium text-[#22c55e]">
                     {row.ticker}
                   </td>
-                  <td className="px-6 py-4 font-medium text-gray-900">{row.name}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                      row.market === 'KOSPI'
-                        ? 'bg-blue-50 text-blue-600'
-                        : 'bg-green-50 text-green-600'
-                    }`}>
-                      {row.market}
-                    </span>
-                  </td>
+                  <td className="px-6 py-4 font-medium text-white">{row.name}</td>
                   <td className={`px-6 py-4 text-right font-mono font-medium ${
                     row.foreignNetBuy === undefined
-                      ? 'text-gray-300'
+                      ? 'text-[#a3a3a3]'
                       : row.foreignNetBuy >= 0
-                        ? 'text-red-500'
-                        : 'text-blue-500'
+                        ? 'text-[#ef4444]'
+                        : 'text-[#3b82f6]'
                   }`}>
                     {row.foreignNetBuy === undefined
                       ? '동기화 필요'
                       : Number(row.foreignNetBuy).toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 text-center text-gray-400 text-xs">
+                  <td className="px-6 py-4 text-center text-[#a3a3a3] text-xs">
                     {row.date ?? '—'}
                   </td>
                 </tr>
@@ -142,7 +132,7 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect }
         </table>
 
         {!loading && !rows.length && !error && (
-          <div className="px-6 py-16 text-center text-gray-400 text-sm">
+          <div className="px-6 py-16 text-center text-[#a3a3a3] text-sm">
             아직 추가한 종목이 없어요. 위에서 종목코드를 입력해 추가해보세요.
           </div>
         )}

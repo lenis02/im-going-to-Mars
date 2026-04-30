@@ -8,21 +8,19 @@ export interface Stock {
   id: number
   ticker: string
   name: string
-  market: 'KOSPI' | 'KOSDAQ'
 }
 
 export interface ForeignRankingItem {
   ticker: string
   name: string
-  market: 'KOSPI' | 'KOSDAQ'
   foreignNetBuy: number
   date: string
+  consecutiveDays: number
 }
 
 export interface StockLookupResult {
   ticker: string
   name: string
-  market: 'KOSPI' | 'KOSDAQ'
 }
 
 export interface DailyPrice {
@@ -39,7 +37,6 @@ export interface DailyPrice {
 export interface CreateStockDto {
   ticker: string
   name: string
-  market: 'KOSPI' | 'KOSDAQ'
 }
 
 export async function fetchStocks(): Promise<Stock[]> {

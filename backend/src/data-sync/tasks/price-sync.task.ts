@@ -4,7 +4,6 @@ import { subDays } from 'date-fns';
 import { StockService } from '../../stock/stock.service';
 import { PriceService } from '../../price/price.service';
 import { KisAdapter } from '../adapters/kis/kis-adapter';
-import { Market } from '../../stock/entities/stock.entity';
 
 @Injectable()
 export class PriceSyncTask {
@@ -45,8 +44,6 @@ export class PriceSyncTask {
 
     for (const stock of stocks) {
       try {
-        const market = stock.market === Market.KOSPI ? 'J' : 'Q';
-
         const prices = await this.kisAdapter.fetchDailyPrices(
           stock.ticker,
           from,
@@ -63,7 +60,6 @@ export class PriceSyncTask {
         const latestTradingDate = new Date(prices[0].date);
         const investorData = await this.kisAdapter.fetchInvestorTradeDailyByStock(
           stock.ticker,
-          market,
           from,
           latestTradingDate,
         );

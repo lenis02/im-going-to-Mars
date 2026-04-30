@@ -1,5 +1,4 @@
-import { IsEnum, IsString, Length } from 'class-validator';
-import { Market } from '../entities/stock.entity';
+import { IsString, Length } from 'class-validator';
 
 export class CreateStockDto {
   @IsString()
@@ -9,7 +8,4 @@ export class CreateStockDto {
   @IsString()
   @Length(1, 100)
   name: string;
-
-  @IsEnum(Market)
-  market: Market;
 }
