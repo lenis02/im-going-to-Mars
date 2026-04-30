@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip,
   ResponsiveContainer,
@@ -75,6 +75,114 @@ function calcRolling7(prices: DailyPrice[]) {
   })
 }
 
+interface CandleEntry {
+  date: string
+  open: number
+  high: number
+  low: number
+  close: number
+}
+
+function CandlestickSVGChart({
+  data,
+  domain,
+  width = 0,
+  height = 0,
+}: {
+  data: CandleEntry[]
+  domain: [number, number]
+  width?: number
+  height?: number
+}) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+  const margin = { top: 4, right: 8, bottom: 20, left: 36 }
+  const plotW = Math.max(width - margin.left - margin.right, 0)
+  const plotH = Math.max(height - margin.top - margin.bottom, 0)
+  const [yMin, yMax] = domain
+  const n = data.length
+  const bandwidth = n > 0 ? plotW / n : 0
+  const xPos = (i: number) => margin.left + (i + 0.5) * bandwidth
+  const yPos = (v: number) =>
+    yMax === yMin ? margin.top + plotH / 2 : margin.top + plotH * (1 - (v - yMin) / (yMax - yMin))
+
+  const yTicks = Array.from({ length: 4 }, (_, i) => yMin + (yMax - yMin) * (i / 3))
+  const xLabelIndices = n > 2 ? [0, Math.floor((n - 1) / 2), n - 1] : [0, n - 1]
+
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const idx = Math.floor((e.clientX - rect.left - margin.left) / bandwidth)
+    setHoverIdx(idx >= 0 && idx < n ? idx : null)
+  }
+
+  const hd = hoverIdx !== null ? data[hoverIdx] : null
+
+  return (
+    <div style={{ position: 'relative', width, height }}>
+      <svg width={width} height={height} onMouseMove={handleMouseMove} onMouseLeave={() => setHoverIdx(null)}>
+        {yTicks.map((v, i) => (
+          <g key={i}>
+            <line x1={margin.left} y1={yPos(v)} x2={margin.left + plotW} y2={yPos(v)} stroke="#f3f4f6" strokeWidth={0.5} />
+            <text x={margin.left - 4} y={yPos(v) + 3} textAnchor="end" fontSize={10} fill="#9ca3af">
+              {(v / 1000).toFixed(0)}k
+            </text>
+          </g>
+        ))}
+        {xLabelIndices.map((i) => (
+          <text key={i} x={xPos(i)} y={height - 5} textAnchor="middle" fontSize={10} fill="#9ca3af">
+            {data[i]?.date}
+          </text>
+        ))}
+        {data.map((d, i) => {
+          const cx = xPos(i)
+          const isUp = d.close >= d.open
+          const color = isUp ? '#ef4444' : '#3b82f6'
+          const bodyTop = Math.min(yPos(d.open), yPos(d.close))
+          const bodyH = Math.max(Math.abs(yPos(d.close) - yPos(d.open)), 1)
+          const bodyW = Math.max(bandwidth * 0.6 - 1, 1)
+          return (
+            <g key={i}>
+              <line x1={cx} y1={yPos(d.high)} x2={cx} y2={yPos(d.low)} stroke={color} strokeWidth={1} />
+              <rect x={cx - bodyW / 2} y={bodyTop} width={bodyW} height={bodyH} fill={color} />
+            </g>
+          )
+        })}
+        {hoverIdx !== null && (
+          <line x1={xPos(hoverIdx)} y1={margin.top} x2={xPos(hoverIdx)} y2={margin.top + plotH}
+            stroke="#9ca3af" strokeWidth={0.5} strokeDasharray="3,3" />
+        )}
+      </svg>
+      {hd && hoverIdx !== null && (
+        <div
+          style={{ position: 'absolute', left: Math.min(xPos(hoverIdx) + 8, width - 110), top: margin.top, pointerEvents: 'none' }}
+          className="bg-white border border-gray-100 rounded-xl px-3 py-2 text-xs shadow-sm z-10"
+        >
+          <p className="font-medium text-gray-500 mb-1">{hd.date}</p>
+          <p>시&nbsp;<span className="font-mono">{hd.open.toLocaleString()}</span></p>
+          <p>고&nbsp;<span className="font-mono text-red-500">{hd.high.toLocaleString()}</span></p>
+          <p>저&nbsp;<span className="font-mono text-blue-500">{hd.low.toLocaleString()}</span></p>
+          <p>종&nbsp;<span className={`font-mono font-semibold ${hd.close >= hd.open ? 'text-red-500' : 'text-blue-500'}`}>{hd.close.toLocaleString()}</span></p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CandleTooltip({ active, payload }: { active?: boolean; payload?: any[] }) {
+  if (!active || !payload?.length) return null
+  const d: CandleEntry = payload[0].payload
+  const isUp = d.close >= d.open
+  const color = isUp ? 'text-red-500' : 'text-blue-500'
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl px-3 py-2 text-xs shadow-sm">
+      <p className="font-medium text-gray-500 mb-1">{d.date}</p>
+      <p>시&nbsp;<span className="font-mono">{d.open.toLocaleString()}</span></p>
+      <p>고&nbsp;<span className="font-mono text-red-500">{d.high.toLocaleString()}</span></p>
+      <p>저&nbsp;<span className="font-mono text-blue-500">{d.low.toLocaleString()}</span></p>
+      <p>종&nbsp;<span className={`font-mono font-semibold ${color}`}>{d.close.toLocaleString()}</span></p>
+    </div>
+  )
+}
+
 const VERDICT_CONFIG = {
   entry: { label: '매수 추천', className: 'bg-red-50 text-red-600 border-red-100' },
   watch: { label: '관찰 중', className: 'bg-yellow-50 text-yellow-600 border-yellow-100' },
@@ -86,6 +194,16 @@ export default function StockAnalysis({ ticker }: Props) {
   const [stock, setStock] = useState<Stock | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [chartType, setChartType] = useState<'line' | 'candle'>('line')
+  const candleRef = useRef<HTMLDivElement>(null)
+  const [candleW, setCandleW] = useState(0)
+
+  useEffect(() => {
+    if (chartType !== 'candle' || !candleRef.current) return
+    const obs = new ResizeObserver(([e]) => setCandleW(e.contentRect.width))
+    obs.observe(candleRef.current)
+    return () => obs.disconnect()
+  }, [chartType])
 
   useEffect(() => {
     setLoading(true)
@@ -125,7 +243,17 @@ export default function StockAnalysis({ ticker }: Props) {
   const isUp = latestChangeRate >= 0
   const changeColor = isUp ? 'text-red-500' : 'text-blue-500'
 
-  const priceChartData = sorted.map((p) => ({ date: p.date.slice(5), close: Number(p.close) }))
+  const candleChartData: CandleEntry[] = sorted.map((p) => ({
+    date: p.date.slice(5),
+    open: Number(p.open),
+    high: Number(p.high),
+    low: Number(p.low),
+    close: Number(p.close),
+  }))
+  const candleYDomain = [
+    Math.floor(Math.min(...candleChartData.map((d) => d.low)) * 0.998),
+    Math.ceil(Math.max(...candleChartData.map((d) => d.high)) * 1.002),
+  ]
   const netBuyChartData = calcRolling7(prices)
 
   return (
@@ -153,15 +281,34 @@ export default function StockAnalysis({ ticker }: Props) {
       <div className="px-6 pt-5 pb-2 grid grid-cols-10 gap-6">
         {/* 종가 차트 */}
         <div className="col-span-7">
-          <p className="text-xs font-medium text-gray-500 mb-2">종가 추이 <span className="text-gray-300 font-normal">(수정주가 기준)</span></p>
-          <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={priceChartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`} width={36} />
-              <Tooltip formatter={(v) => [`${Number(v).toLocaleString()}원`, '종가']} />
-              <Line dataKey="close" type="monotone" stroke="#f59e0b" dot={false} strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-medium text-gray-500">
+              종가 추이 <span className="text-gray-300 font-normal">(수정주가 기준)</span>
+            </p>
+            <button
+              onClick={() => setChartType((t) => t === 'line' ? 'candle' : 'line')}
+              className="px-2 py-0.5 text-xs font-medium rounded border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors"
+            >
+              {chartType === 'line' ? '라인' : '캔들'}
+            </button>
+          </div>
+
+          {chartType === 'line' ? (
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={candleChartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`} width={36} />
+                <Tooltip content={<CandleTooltip />} />
+                <Line dataKey="close" type="monotone" stroke="#f59e0b" dot={false} strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div ref={candleRef} style={{ height: 160 }}>
+              {candleW > 0 && (
+                <CandlestickSVGChart data={candleChartData} domain={[candleYDomain[0], candleYDomain[1]]} width={candleW} height={160} />
+              )}
+            </div>
+          )}
         </div>
 
         {/* 7일 누적 외인 순매수 수치 */}

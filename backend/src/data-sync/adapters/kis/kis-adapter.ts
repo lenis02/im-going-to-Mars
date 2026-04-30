@@ -72,8 +72,10 @@ export class KisAdapter implements MarketDataPort {
       volume: Number(item.acml_vol),
       changeRate: (() => {
         const isDown = ['4', '5'].includes(item.prdy_vrss_sign);
-        const rate = Math.abs(Number(item.prdy_ctrt ?? '0'));
-        return isDown ? -rate : rate;
+        const vrss = Math.abs(Number(item.prdy_vrss));
+        const close = Number(item.stck_clpr);
+        const prevClose = isDown ? close + vrss : close - vrss;
+        return prevClose > 0 ? ((isDown ? -vrss : vrss) / prevClose) * 100 : 0;
       })(),
     }));
   }
