@@ -28,6 +28,20 @@ export interface KisDailyPriceResponse {
   output2: KisDailyPriceItem[];
 }
 
+export interface KisCurrentPriceOutput {
+  stck_prpr: string;       // 주식 현재가
+  prdy_vrss: string;       // 전일 대비
+  prdy_vrss_sign: string;  // 전일 대비 부호 (1:상한 2:상승 3:보합 4:하한 5:하락)
+  prdy_ctrt: string;       // 전일 대비율 (%)
+}
+
+export interface KisCurrentPriceResponse {
+  rt_cd: string;
+  msg_cd: string;
+  msg1: string;
+  output: KisCurrentPriceOutput;
+}
+
 export interface KisInvestorTradeItem {
   stck_bsop_date: string; // 영업일자 YYYYMMDD
   frgn_ntby_qty: string; // 외국인 순매수 수량

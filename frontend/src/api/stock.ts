@@ -70,3 +70,13 @@ export async function fetchPrices(ticker: string): Promise<DailyPrice[]> {
   })
   return res.data.data
 }
+
+export interface CurrentQuote {
+  price: number
+  changeRate: number
+}
+
+export async function fetchCurrentQuote(ticker: string): Promise<CurrentQuote> {
+  const res = await api.get<{ data: CurrentQuote }>(`/data-sync/quote/${ticker}`)
+  return res.data.data
+}

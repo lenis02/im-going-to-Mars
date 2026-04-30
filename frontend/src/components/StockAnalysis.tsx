@@ -1,10 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip,
-  ResponsiveContainer,
-} from 'recharts'
-import { fetchPrices, fetchStocks } from '../api/stock'
-import type { DailyPrice, Stock } from '../api/stock'
+import { fetchCurrentQuote, fetchPrices, fetchStocks } from '../api/stock'
+import type { CurrentQuote, DailyPrice, Stock } from '../api/stock'
 
 interface Props {
   ticker: string
@@ -167,22 +163,6 @@ function CandlestickSVGChart({
   )
 }
 
-function CandleTooltip({ active, payload }: { active?: boolean; payload?: any[] }) {
-  if (!active || !payload?.length) return null
-  const d: CandleEntry = payload[0].payload
-  const isUp = d.close >= d.open
-  const color = isUp ? 'text-red-500' : 'text-blue-500'
-  return (
-    <div className="bg-white border border-gray-100 rounded-xl px-3 py-2 text-xs shadow-sm">
-      <p className="font-medium text-gray-500 mb-1">{d.date}</p>
-      <p>시&nbsp;<span className="font-mono">{d.open.toLocaleString()}</span></p>
-      <p>고&nbsp;<span className="font-mono text-red-500">{d.high.toLocaleString()}</span></p>
-      <p>저&nbsp;<span className="font-mono text-blue-500">{d.low.toLocaleString()}</span></p>
-      <p>종&nbsp;<span className={`font-mono font-semibold ${color}`}>{d.close.toLocaleString()}</span></p>
-    </div>
-  )
-}
-
 const VERDICT_CONFIG = {
   entry: { label: '매수 추천', className: 'bg-red-50 text-red-600 border-red-100' },
   watch: { label: '관찰 중', className: 'bg-yellow-50 text-yellow-600 border-yellow-100' },
@@ -192,29 +172,37 @@ const VERDICT_CONFIG = {
 export default function StockAnalysis({ ticker }: Props) {
   const [prices, setPrices] = useState<DailyPrice[]>([])
   const [stock, setStock] = useState<Stock | null>(null)
+  const [quote, setQuote] = useState<CurrentQuote | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [chartType, setChartType] = useState<'line' | 'candle'>('line')
   const candleRef = useRef<HTMLDivElement>(null)
   const [candleW, setCandleW] = useState(0)
 
   useEffect(() => {
-    if (chartType !== 'candle' || !candleRef.current) return
+    if (!candleRef.current) return
     const obs = new ResizeObserver(([e]) => setCandleW(e.contentRect.width))
     obs.observe(candleRef.current)
     return () => obs.disconnect()
-  }, [chartType])
+  }, [loading])
 
   useEffect(() => {
     setLoading(true)
     setError(null)
-    Promise.all([fetchPrices(ticker), fetchStocks()])
-      .then(([priceData, stocks]) => {
+    Promise.all([fetchPrices(ticker), fetchStocks(), fetchCurrentQuote(ticker)])
+      .then(([priceData, stocks, quoteData]) => {
         setPrices(priceData)
         setStock(stocks.find((s) => s.ticker === ticker) ?? null)
+        setQuote(quoteData)
       })
       .catch(() => setError('데이터를 불러오지 못했습니다.'))
       .finally(() => setLoading(false))
+  }, [ticker])
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      fetchCurrentQuote(ticker).then(setQuote).catch(() => {})
+    }, 1_000)
+    return () => clearInterval(id)
   }, [ticker])
 
   if (loading) {
@@ -237,9 +225,8 @@ export default function StockAnalysis({ ticker }: Props) {
   const verdictConfig = VERDICT_CONFIG[verdict]
 
   const sorted = [...prices].sort((a, b) => a.date.localeCompare(b.date))
-  const latest = sorted[sorted.length - 1]
-  const latestClose = Number(latest.close)
-  const latestChangeRate = Number(latest.changeRate)
+  const latestClose = quote?.price ?? Number(sorted[sorted.length - 1].close)
+  const latestChangeRate = quote?.changeRate ?? 0
   const isUp = latestChangeRate >= 0
   const changeColor = isUp ? 'text-red-500' : 'text-blue-500'
 
@@ -279,36 +266,16 @@ export default function StockAnalysis({ ticker }: Props) {
       </div>
 
       <div className="px-6 pt-5 pb-2 grid grid-cols-10 gap-6">
-        {/* 종가 차트 */}
+        {/* 캔들차트 */}
         <div className="col-span-7">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-medium text-gray-500">
-              종가 추이 <span className="text-gray-300 font-normal">(수정주가 기준)</span>
-            </p>
-            <button
-              onClick={() => setChartType((t) => t === 'line' ? 'candle' : 'line')}
-              className="px-2 py-0.5 text-xs font-medium rounded border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors"
-            >
-              {chartType === 'line' ? '라인' : '캔들'}
-            </button>
+          <p className="text-xs font-medium text-gray-500 mb-2">
+            캔들차트 <span className="text-gray-300 font-normal">(수정주가 기준)</span>
+          </p>
+          <div ref={candleRef} style={{ height: 160 }}>
+            {candleW > 0 && (
+              <CandlestickSVGChart data={candleChartData} domain={[candleYDomain[0], candleYDomain[1]]} width={candleW} height={160} />
+            )}
           </div>
-
-          {chartType === 'line' ? (
-            <ResponsiveContainer width="100%" height={160}>
-              <LineChart data={candleChartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`} width={36} />
-                <Tooltip content={<CandleTooltip />} />
-                <Line dataKey="close" type="monotone" stroke="#f59e0b" dot={false} strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div ref={candleRef} style={{ height: 160 }}>
-              {candleW > 0 && (
-                <CandlestickSVGChart data={candleChartData} domain={[candleYDomain[0], candleYDomain[1]]} width={candleW} height={160} />
-              )}
-            </div>
-          )}
         </div>
 
         {/* 7일 누적 외인 순매수 수치 */}

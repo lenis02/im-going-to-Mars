@@ -19,7 +19,8 @@ export default function App() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-100 px-6 py-4">
         <h1 className="text-xl font-bold text-gray-900">
-          너넨 지금 스윙하고 있지 않아(스윙 투자 보조 도구)
+          너넨 지금 스윙하고 있지 않아
+          <span className="text-sm font-light"> (스윙 투자 보조 도구)</span>
         </h1>
       </header>
       <main className="max-w-4xl mx-auto px-6 py-8 flex flex-col gap-6">

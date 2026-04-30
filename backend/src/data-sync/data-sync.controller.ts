@@ -21,14 +21,14 @@ export class DataSyncController {
 
   @Post('prices')
   @HttpCode(HttpStatus.ACCEPTED)
-  async syncPrices() {
+  syncPrices() {
     void this.priceSyncTask.run();
     return { message: '일봉 동기화를 시작했습니다.' };
   }
 
   @Post('signals')
   @HttpCode(HttpStatus.ACCEPTED)
-  async detectSignals() {
+  detectSignals() {
     void this.signalDetectTask.run();
     return { message: '신호 탐지를 시작했습니다.' };
   }
@@ -40,5 +40,11 @@ export class DataSyncController {
       throw new NotFoundException(`종목을 찾을 수 없습니다: ${ticker}`);
     }
     return { data: { ticker: ticker.toUpperCase(), ...info } };
+  }
+
+  @Get('quote/:ticker')
+  async currentPrice(@Param('ticker') ticker: string) {
+    const data = await this.kisAdapter.fetchCurrentPrice(ticker.toUpperCase());
+    return { data };
   }
 }

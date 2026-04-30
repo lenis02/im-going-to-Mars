@@ -13,6 +13,11 @@ export interface DailyInvestorDto {
   foreignNetBuy: number;
 }
 
+export interface CurrentPriceDto {
+  price: number;
+  changeRate: number;
+}
+
 export interface MarketDataPort {
   fetchDailyPrices(ticker: string, from: Date, to: Date): Promise<OhlcvDto[]>;
   fetchInvestorTradeDailyByStock(
@@ -21,4 +26,5 @@ export interface MarketDataPort {
     from: Date,
     to: Date,
   ): Promise<DailyInvestorDto[]>;
+  fetchCurrentPrice(ticker: string): Promise<CurrentPriceDto>;
 }
