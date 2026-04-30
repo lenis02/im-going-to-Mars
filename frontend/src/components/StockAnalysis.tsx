@@ -203,7 +203,7 @@ export default function StockAnalysis({ ticker }: Props) {
     const obs = new ResizeObserver(([e]) => setCandleW(e.contentRect.width))
     obs.observe(candleRef.current)
     return () => obs.disconnect()
-  }, [chartType])
+  }, [chartType, loading])
 
   useEffect(() => {
     setLoading(true)
