@@ -183,23 +183,23 @@ export class CandlePatternDetector {
 
     const detected: Array<{ patternName: string; category: CandleCategory }> = [];
 
-    const ohlc = {
-      open: recentData.map((d) => d.open),
-      high: recentData.map((d) => d.high),
-      close: recentData.map((d) => d.close),
-      low: recentData.map((d) => d.low),
-    };
-
     for (const def of LIBRARY_PATTERNS) {
       if (recentData.length < def.minCandles) continue;
 
       try {
-        // 4. [수정됨] .hasPattern() 대신 래퍼 함수를 직접 호출
+        const sliced = recentData;
+        const ohlc = {
+          open: sliced.map(d => d.open),
+          high: sliced.map(d => d.high),
+          low: sliced.map(d => d.low),
+          close: sliced.map(d => d.close),
+        };
+
         if (def.checker(ohlc)) {
           detected.push({ patternName: def.patternName, category: def.category });
         }
-      } catch (e) {
-        // 에러 로깅이 필요하면 여기에 추가
+      } catch {
+        console.error(`[Pattern Error] ${def.patternName}`);
       }
     }
 

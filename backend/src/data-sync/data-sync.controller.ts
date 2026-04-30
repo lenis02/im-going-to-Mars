@@ -3,16 +3,21 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Logger,
   NotFoundException,
   Param,
   Post,
+  ServiceUnavailableException,
 } from '@nestjs/common';
+import { AxiosError } from 'axios';
 import { PriceSyncTask } from './tasks/price-sync.task';
 import { SignalDetectTask } from './tasks/signal-detect.task';
 import { KisAdapter } from './adapters/kis/kis-adapter';
 
 @Controller('data-sync')
 export class DataSyncController {
+  private readonly logger = new Logger(DataSyncController.name);
+
   constructor(
     private readonly priceSyncTask: PriceSyncTask,
     private readonly signalDetectTask: SignalDetectTask,
@@ -44,7 +49,16 @@ export class DataSyncController {
 
   @Get('quote/:ticker')
   async currentPrice(@Param('ticker') ticker: string) {
-    const data = await this.kisAdapter.fetchCurrentPrice(ticker.toUpperCase());
-    return { data };
+    try {
+      const data = await this.kisAdapter.fetchCurrentPrice(ticker.toUpperCase());
+      return { data };
+    } catch (err) {
+      const axiosErr = err as AxiosError;
+      // 장 마감 등으로 KIS API가 5xx를 반환하면 503으로 조용히 처리
+      if (axiosErr.response?.status && axiosErr.response.status >= 500) {
+        throw new ServiceUnavailableException('시세 조회 불가 (장 마감 또는 KIS API 오류)');
+      }
+      throw err;
+    }
   }
 }
