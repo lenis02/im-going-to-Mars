@@ -89,7 +89,7 @@ export class PriceService {
       return {
         patternName: '',
         patternCategory: null,
-        status: '관망 중',
+        status: '조건 대기',
         isRecommend: false,
         reason: '데이터가 충분하지 않습니다.',
       };

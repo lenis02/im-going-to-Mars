@@ -8,7 +8,8 @@
       "Bash(npm create *)",
       "Bash(PGPASSWORD=1234 psql -h localhost -U postgres -d practice_stock -c 'SELECT date, \"foreignNetBuy\" FROM daily_price ORDER BY date DESC LIMIT 10;')",
       "Bash(docker exec imgoingtomars-db-1 *)",
-      "Bash(node -e \"const ti = require\\('technicalindicators'\\); console.log\\(Object.keys\\(ti\\).filter\\(k => /hammer|crow|tasuki/i.test\\(k\\)\\)\\)\")"
+      "Bash(node -e \"const ti = require\\('technicalindicators'\\); console.log\\(Object.keys\\(ti\\).filter\\(k => /hammer|crow|tasuki/i.test\\(k\\)\\)\\)\")",
+      "Bash(node -e ' *)"
     ]
   }
 }

@@ -120,7 +120,7 @@ const SIGNAL_CONFIG = {
   entry:    { label: '스윙 진입',     text: 'text-red-600',   dot: 'bg-red-500' },
   exit:     { label: '과열/하락 경고', text: 'text-blue-600',  dot: 'bg-blue-500' },
   interest: { label: '관심 집중',     text: 'text-amber-600', dot: 'bg-amber-500' },
-  watch:    { label: '관망 중',       text: 'text-gray-700',  dot: 'bg-gray-400' },
+  watch:    { label: '조건 대기',      text: 'text-gray-700',  dot: 'bg-gray-400' },
 }
 
 function signalStatusToKey(status: StockSignal['status']): keyof typeof SIGNAL_CONFIG {

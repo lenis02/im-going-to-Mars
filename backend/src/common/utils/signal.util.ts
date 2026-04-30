@@ -75,7 +75,7 @@ export interface SwingSignalInput {
 }
 
 export interface SignalResult {
-  status: '스윙 진입' | '과열/하락 경고' | '관심 집중' | '관망 중';
+  status: '스윙 진입' | '과열/하락 경고' | '관심 집중' | '조건 대기';
   /** '스윙 진입'일 때만 true */
   isRecommend: boolean;
   /** 수치 + 캔들 근거를 주린이가 이해하기 쉽게 서술 */
@@ -90,7 +90,7 @@ export interface SignalResult {
  *  B) 극단적 과열 수치 → '과열/하락 경고'
  *  A) 이상적 진입 구간 → '스윙 진입' (상승 캔들이면 최강 추천)
  *  C) 조건 일부 충족 또는 좋은 캔들 → '관심 집중'
- *  D) 위 어디도 해당 없음 → '관망 중'
+ *  D) 위 어디도 해당 없음 → '조건 대기'
  */
 export function evaluateSwingSignalWithCandle(
   input: SwingSignalInput,
@@ -229,7 +229,7 @@ export function evaluateSwingSignalWithCandle(
     };
   }
 
-  // ── 조건 D: 관망 중 ─────────────────────────────────────────────
+  // ── 조건 D: 조건 대기 ─────────────────────────────────────────────
   // 뚜렷한 진입 신호가 없거나, 캔들에 방향성이 없는 경우.
   const noSignalNote =
     candlePatternCategory === '단일 캔들 패턴'
@@ -237,7 +237,7 @@ export function evaluateSwingSignalWithCandle(
       : '';
 
   return {
-    status: '관망 중',
+    status: '조건 대기',
     isRecommend: false,
     reason:
       `현재 스윙 진입 또는 관심 집중 조건을 충족하지 못했습니다. ` +
