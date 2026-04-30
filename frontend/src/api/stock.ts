@@ -80,3 +80,18 @@ export async function fetchCurrentQuote(ticker: string): Promise<CurrentQuote> {
   const res = await api.get<{ data: CurrentQuote }>(`/data-sync/quote/${ticker}`)
   return res.data.data
 }
+
+export interface StockSignal {
+  patternName: string
+  patternCategory: string | null
+  status: '스윙 진입' | '과열/하락 경고' | '관심 집중' | '관망 중'
+  isRecommend: boolean
+  reason: string
+}
+
+export async function fetchSignal(ticker: string, changeRate?: number): Promise<StockSignal> {
+  const res = await api.get<{ data: StockSignal }>(`/stocks/${ticker}/prices/signal`, {
+    params: changeRate !== undefined ? { changeRate } : {},
+  })
+  return res.data.data
+}

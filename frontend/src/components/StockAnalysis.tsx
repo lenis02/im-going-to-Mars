@@ -1,62 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { fetchCurrentQuote, fetchPrices, fetchStocks } from '../api/stock'
-import type { CurrentQuote, DailyPrice, Stock } from '../api/stock'
+import { fetchCurrentQuote, fetchPrices, fetchSignal, fetchStocks } from '../api/stock'
+import type { CurrentQuote, DailyPrice, Stock, StockSignal } from '../api/stock'
 
 interface Props {
   ticker: string
-}
-
-interface Factor {
-  label: string
-  met: boolean
-  detail: string
-}
-
-function calcFactors(prices: DailyPrice[]): { factors: Factor[]; verdict: 'entry' | 'watch' | 'exit' } {
-  if (prices.length < 2) return { factors: [], verdict: 'watch' }
-
-  const sorted = [...prices]
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .map((p) => ({ ...p, close: Number(p.close), volume: Number(p.volume), foreignNetBuy: Number(p.foreignNetBuy) }))
-
-  const latest = sorted[sorted.length - 1]
-  const prev = sorted[sorted.length - 2]
-
-  // 1. 외인 연속 순매수
-  let streak = 0
-  for (let i = sorted.length - 1; i >= 0; i--) {
-    if (sorted[i].foreignNetBuy > 0) streak++
-    else break
-  }
-
-  // 2. 거래량 폭발
-  const volumeRatio = prev.volume > 0 ? latest.volume / prev.volume : 0
-
-  // 3. 전일 대비 2~7% 상승 (KIS 기준가 기반 changeRate 사용)
-  const changeRate = Number(latest.changeRate)
-  const priceRise = changeRate >= 2 && changeRate <= 7
-
-  const factors: Factor[] = [
-    {
-      label: '외인 연속 순매수',
-      met: streak >= 5,
-      detail: `${streak}일째 연속 (기준: 5일 이상)`,
-    },
-    {
-      label: '거래량 폭발',
-      met: volumeRatio >= 2,
-      detail: `전일 대비 ${(volumeRatio * 100).toFixed(0)}% (기준: 200% 이상)`,
-    },
-    {
-      label: '전일 대비 2~7% 상승',
-      met: priceRise,
-      detail: `${changeRate >= 0 ? '+' : ''}${changeRate.toFixed(2)}% (기준: +2%~+7%)`,
-    },
-  ]
-
-  const metCount = factors.filter((f) => f.met).length
-  const verdict = metCount === 3 ? 'entry' : metCount === 0 ? 'exit' : 'watch'
-  return { factors, verdict }
 }
 
 function calcRolling7(prices: DailyPrice[]) {
@@ -169,10 +116,27 @@ const VERDICT_CONFIG = {
   exit: { label: '매수 비추천', className: 'bg-blue-50 text-blue-600 border-blue-100' },
 }
 
+const SIGNAL_CONFIG = {
+  entry:    { label: '스윙 진입',     text: 'text-red-600',   dot: 'bg-red-500' },
+  exit:     { label: '과열/하락 경고', text: 'text-blue-600',  dot: 'bg-blue-500' },
+  interest: { label: '관심 집중',     text: 'text-amber-600', dot: 'bg-amber-500' },
+  watch:    { label: '관망 중',       text: 'text-gray-700',  dot: 'bg-gray-400' },
+}
+
+function signalStatusToKey(status: StockSignal['status']): keyof typeof SIGNAL_CONFIG {
+  if (status === '스윙 진입') return 'entry'
+  if (status === '과열/하락 경고') return 'exit'
+  if (status === '관심 집중') return 'interest'
+  return 'watch'
+}
+
 export default function StockAnalysis({ ticker }: Props) {
   const [prices, setPrices] = useState<DailyPrice[]>([])
   const [stock, setStock] = useState<Stock | null>(null)
   const [quote, setQuote] = useState<CurrentQuote | null>(null)
+  const [signal, setSignal] = useState<StockSignal | null>(null)
+  const [showModal, setShowModal] = useState(false)
+  const [showConditions, setShowConditions] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const candleRef = useRef<HTMLDivElement>(null)
@@ -193,7 +157,9 @@ export default function StockAnalysis({ ticker }: Props) {
         setPrices(priceData)
         setStock(stocks.find((s) => s.ticker === ticker) ?? null)
         setQuote(quoteData)
+        return fetchSignal(ticker, quoteData.changeRate)
       })
+      .then((signalData) => setSignal(signalData))
       .catch(() => setError('데이터를 불러오지 못했습니다.'))
       .finally(() => setLoading(false))
   }, [ticker])
@@ -221,11 +187,26 @@ export default function StockAnalysis({ ticker }: Props) {
     )
   }
 
-  const { factors, verdict } = calcFactors(prices)
-  const verdictConfig = VERDICT_CONFIG[verdict]
-
   const sorted = [...prices].sort((a, b) => a.date.localeCompare(b.date))
-  const latestClose = quote?.price ?? Number(sorted[sorted.length - 1].close)
+
+  // 모달에 표시할 수치 계산
+  let consecutiveForeignBuyDays = 0
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    if (Number(sorted[i].foreignNetBuy) > 0) consecutiveForeignBuyDays++
+    else break
+  }
+  const latestP = sorted[sorted.length - 1]
+  const prevP = sorted[sorted.length - 2]
+  const volumeRatioPct = Number(prevP?.volume) > 0
+    ? (Number(latestP.volume) / Number(prevP.volume)) * 100
+    : 0
+
+  const sigKey = signal ? signalStatusToKey(signal.status) : ('watch' as keyof typeof SIGNAL_CONFIG)
+  const sig = SIGNAL_CONFIG[sigKey]
+  const verdictKey = sigKey === 'interest' ? 'watch' : sigKey as keyof typeof VERDICT_CONFIG
+  const verdictConfig = VERDICT_CONFIG[verdictKey]
+
+  const latestClose = quote?.price ?? Number(latestP.close)
   const latestChangeRate = quote?.changeRate ?? 0
   const isUp = latestChangeRate >= 0
   const changeColor = isUp ? 'text-red-500' : 'text-blue-500'
@@ -244,72 +225,227 @@ export default function StockAnalysis({ ticker }: Props) {
   const netBuyChartData = calcRolling7(prices)
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="font-mono font-medium text-blue-600 text-sm">{ticker}</span>
-            {stock && <span className="font-semibold text-gray-900">{stock.name}</span>}
-          </div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-xl font-bold text-gray-900">{latestClose.toLocaleString()}원</span>
-            <span className={`text-sm font-medium ${changeColor}`}>
-              {isUp ? '+' : ''}{latestChangeRate.toFixed(2)}%
-            </span>
-          </div>
-          <p className="text-xs text-gray-400 mt-0.5">전일 대비 · 최근 30일 분석</p>
-        </div>
-        <span className={`px-3 py-1 text-sm font-semibold rounded-full border ${verdictConfig.className}`}>
-          {verdictConfig.label}
-        </span>
-      </div>
-
-      <div className="px-6 pt-5 pb-2 grid grid-cols-10 gap-6">
-        {/* 캔들차트 */}
-        <div className="col-span-7">
-          <p className="text-xs font-medium text-gray-500 mb-2">
-            캔들차트 <span className="text-gray-300 font-normal">(수정주가 기준)</span>
-          </p>
-          <div ref={candleRef} style={{ height: 160 }}>
-            {candleW > 0 && (
-              <CandlestickSVGChart data={candleChartData} domain={[candleYDomain[0], candleYDomain[1]]} width={candleW} height={160} />
-            )}
-          </div>
-        </div>
-
-        {/* 7일 누적 외인 순매수 수치 */}
-        <div className="col-span-3 flex flex-col items-center justify-center gap-2">
-          <p className="text-xs font-medium text-gray-500">7일 누적 외인 순매수</p>
-          {(() => {
-            const latest = netBuyChartData[netBuyChartData.length - 1]
-            const sum = latest?.sum ?? 0
-            const isPositive = sum >= 0
-            return (
-              <span
-                className={`font-bold tabular-nums ${isPositive ? 'text-red-500' : 'text-blue-500'}`}
-                style={{ fontSize: '32px', lineHeight: 1.2 }}
-              >
-                {isPositive ? '+' : ''}{sum.toLocaleString()}
-              </span>
-            )
-          })()}
-          <p className="text-xs text-gray-400">주</p>
-        </div>
-      </div>
-
-      {/* 요인 분석 */}
-      <div className="px-6 pb-5 grid grid-cols-3 gap-3">
-        {factors.map((f) => (
-          <div key={f.label} className={`rounded-xl px-4 py-3 border ${f.met ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
-            <div className="flex items-center gap-2 mb-1">
-              <span className={`text-base ${f.met ? 'text-red-500' : 'text-gray-300'}`}>{f.met ? '✓' : '✗'}</span>
-              <span className={`text-xs font-semibold ${f.met ? 'text-red-600' : 'text-gray-500'}`}>{f.label}</span>
+    <>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* 헤더 */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-mono font-medium text-blue-600 text-sm">{ticker}</span>
+              {stock && <span className="font-semibold text-gray-900">{stock.name}</span>}
             </div>
-            <p className="text-xs text-gray-500">{f.detail}</p>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-xl font-bold text-gray-900">{latestClose.toLocaleString()}원</span>
+              <span className={`text-sm font-medium ${changeColor}`}>
+                {isUp ? '+' : ''}{latestChangeRate.toFixed(2)}%
+              </span>
+            </div>
+            <p className="text-xs text-gray-400 mt-0.5">전일 대비 · 최근 30일 분석</p>
           </div>
-        ))}
+          <span className={`px-3 py-1 text-sm font-semibold rounded-full border ${verdictConfig.className}`}>
+            {verdictConfig.label}
+          </span>
+        </div>
+
+        <div className="px-6 pt-5 pb-6 grid grid-cols-10 gap-6">
+          {/* 캔들차트 */}
+          <div className="col-span-7">
+            <p className="text-xs font-medium text-gray-500 mb-2">
+              캔들차트 <span className="text-gray-300 font-normal">(수정주가 기준)</span>
+            </p>
+            <div ref={candleRef} style={{ height: 160 }}>
+              {candleW > 0 && (
+                <CandlestickSVGChart data={candleChartData} domain={[candleYDomain[0], candleYDomain[1]]} width={candleW} height={160} />
+              )}
+            </div>
+          </div>
+
+          {/* 분석 결과 + 7일 누적 외인 순매수 */}
+          <div className="col-span-3 flex flex-col justify-between gap-1">
+            {/* 매매 시그널 */}
+            <div className="text-center">
+              <p className="text-[10px] text-gray-400 font-medium mb-1.5">매매 시그널</p>
+              <button
+                onClick={() => signal && setShowModal(true)}
+                className="inline-flex flex-col items-center gap-0.5 group"
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${sig.dot}`} />
+                  <span className={`text-xl font-bold ${sig.text} group-hover:underline underline-offset-2`}>
+                    {sig.label}
+                  </span>
+                </div>
+                {signal?.patternName && (
+                  <p className={`text-[11px] font-medium ${sig.text} opacity-60`}>
+                    {signal.patternName}
+                  </p>
+                )}
+              </button>
+            </div>
+
+            {/* 7일 누적 외인 순매수 */}
+            <div className="flex flex-col items-center gap-1 pb-3">
+              <p className="text-xs font-medium text-gray-500">7일 누적 외인 순매수</p>
+              {(() => {
+                const latest = netBuyChartData[netBuyChartData.length - 1]
+                const sum = latest?.sum ?? 0
+                const isPositive = sum >= 0
+                return (
+                  <span
+                    className={`font-bold tabular-nums ${isPositive ? 'text-red-500' : 'text-blue-500'}`}
+                    style={{ fontSize: '22px', lineHeight: 1.2 }}
+                  >
+                    {isPositive ? '+' : ''}{sum.toLocaleString()}
+                  </span>
+                )
+              })()}
+              <p className="text-xs text-gray-400">주</p>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+
+      {/* 시그널 상세 모달 */}
+      {showModal && signal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          onClick={() => { setShowModal(false); setShowConditions(false) }}
+        >
+          <div className="absolute inset-0 bg-black/30" />
+          <div
+            className="relative bg-white rounded-2xl shadow-xl w-80 mx-4 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 모달 헤더 */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <span className={`inline-block w-2 h-2 rounded-full ${sig.dot}`} />
+                <h3 className={`font-bold text-base ${sig.text}`}>{sig.label}</h3>
+              </div>
+              <button
+                onClick={() => { setShowModal(false); setShowConditions(false) }}
+                className="text-gray-300 hover:text-gray-500 text-lg leading-none"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 수치 항목 */}
+            <div className="px-5 py-4 space-y-3">
+              {/* 외인 연속 순매수 */}
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">외인 연속 순매수</span>
+                <span className={`text-sm font-semibold tabular-nums ${consecutiveForeignBuyDays >= 3 ? 'text-red-500' : 'text-gray-400'}`}>
+                  {consecutiveForeignBuyDays}일 연속
+                </span>
+              </div>
+
+              {/* 거래량 */}
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">거래량</span>
+                <span className={`text-sm font-semibold tabular-nums ${volumeRatioPct >= 150 ? 'text-red-500' : 'text-gray-400'}`}>
+                  전일 대비 {volumeRatioPct.toFixed(0)}%
+                </span>
+              </div>
+
+              {/* 전일 대비 등락율 */}
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">전일 대비 등락율</span>
+                <span className={`text-sm font-semibold tabular-nums ${latestChangeRate > 0 ? 'text-red-500' : latestChangeRate < 0 ? 'text-blue-500' : 'text-gray-400'}`}>
+                  {latestChangeRate >= 0 ? '+' : ''}{latestChangeRate.toFixed(2)}%
+                </span>
+              </div>
+
+              {/* 캔들 패턴 */}
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">캔들 패턴</span>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-gray-700">
+                    {signal.patternName || '식별 없음'}
+                  </p>
+                  {signal.patternCategory && (
+                    <p className="text-[11px] text-gray-400">{signal.patternCategory}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 시그널 근거 */}
+            <div className="px-5 pb-4 pt-1 border-t border-gray-100">
+              <p className="text-xs text-gray-500 leading-relaxed">{signal.reason}</p>
+            </div>
+
+            {/* 추천 조건 상세 토글 */}
+            <div className="border-t border-gray-100">
+              <button
+                onClick={() => setShowConditions((v) => !v)}
+                className="w-full flex items-center justify-between px-5 py-3 text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                <span>추천 조건 상세 보기</span>
+                <span className={`transition-transform duration-200 ${showConditions ? 'rotate-180' : ''}`}>▾</span>
+              </button>
+
+              <div className={`overflow-hidden transition-all duration-300 ${showConditions ? 'max-h-96' : 'max-h-0'}`}>
+                <div className="px-5 pb-5 space-y-4">
+
+                  {/* 스윙 진입 */}
+                  <div>
+                    <p className="text-[11px] font-bold text-red-500 mb-1.5">스윙 진입 <span className="font-normal text-gray-400">(세 조건 모두 충족)</span></p>
+                    <div className="space-y-1">
+                      {[
+                        ['외인 연속 순매수', '3일 이상'],
+                        ['거래량', '전일 대비 150% ~ 300%'],
+                        ['전일 대비 등락율', '+1.5% ~ +6.0%'],
+                      ].map(([label, value]) => (
+                        <div key={label} className="flex justify-between text-[11px]">
+                          <span className="text-gray-400">{label}</span>
+                          <span className="text-gray-600 font-medium">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 관심 집중 */}
+                  <div>
+                    <p className="text-[11px] font-bold text-amber-500 mb-1.5">관심 집중 <span className="font-normal text-gray-400">(일부 충족)</span></p>
+                    <div className="space-y-1">
+                      {[
+                        ['외인 연속 순매수', '2일 이상'],
+                        ['거래량', '전일 대비 100% ~ 150%'],
+                        ['전일 대비 등락율', '+1.0% ~ +3.0%'],
+                      ].map(([label, value]) => (
+                        <div key={label} className="flex justify-between text-[11px]">
+                          <span className="text-gray-400">{label}</span>
+                          <span className="text-gray-600 font-medium">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 과열/하락 경고 */}
+                  <div>
+                    <p className="text-[11px] font-bold text-blue-500 mb-1.5">과열/하락 경고 <span className="font-normal text-gray-400">(하나라도 해당)</span></p>
+                    <div className="space-y-1">
+                      {[
+                        ['하락 전환형 캔들 패턴', '감지 시'],
+                        ['전일 대비 등락율', '+10% 이상 또는 -3% 이하'],
+                        ['거래량', '전일 대비 400% 이상'],
+                      ].map(([label, value]) => (
+                        <div key={label} className="flex justify-between text-[11px]">
+                          <span className="text-gray-400">{label}</span>
+                          <span className="text-gray-600 font-medium">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+    </>
   )
 }
