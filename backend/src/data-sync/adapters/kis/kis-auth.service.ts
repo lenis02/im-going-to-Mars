@@ -52,7 +52,7 @@ export class KisAuthService {
     } catch (err) {
       const axiosErr = err as AxiosError;
       this.logger.error(
-        `토큰 발급 실패 [${axiosErr.response?.status}]: ${JSON.stringify(axiosErr.response?.data)}`,
+        `토큰 발급 실패 [${axiosErr.response?.status ?? axiosErr.code}]`,
       );
       throw err;
     }

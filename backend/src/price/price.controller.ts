@@ -9,6 +9,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { PriceService } from './price.service';
 import { CreateDailyPriceDto } from './dto/create-daily-price.dto';
 import { QueryPriceDto } from './dto/query-price.dto';
@@ -27,6 +28,7 @@ export class PriceController {
   }
 
   @Get('signal')
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
   async getSignal(
     @Param('ticker') ticker: string,
     @Query('changeRate') changeRate?: string,
