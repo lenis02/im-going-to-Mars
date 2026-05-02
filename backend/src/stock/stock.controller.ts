@@ -48,6 +48,12 @@ export class StockController {
     return { data };
   }
 
+  @Delete()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeAll() {
+    return this.stockService.removeAll();
+  }
+
   @Delete(':ticker')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('ticker') ticker: string) {

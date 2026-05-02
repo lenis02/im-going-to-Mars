@@ -91,6 +91,10 @@ export async function deleteStock(ticker: string): Promise<void> {
   await api.delete(`/stocks/${ticker}`)
 }
 
+export async function deleteAllStocks(): Promise<void> {
+  await api.delete('/stocks')
+}
+
 export async function syncPrices(): Promise<void> {
   await api.post('/data-sync/prices')
 }
