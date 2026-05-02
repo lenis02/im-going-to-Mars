@@ -152,7 +152,7 @@ export class KisAdapter implements MarketDataPort {
     }
 
     this.logger.error(`외인 투자자 API 모든 시장 코드 실패: ${ticker}`);
-    throw lastErr ?? new Error(`외인 투자자 API 실패: ${ticker}`);
+    throw lastErr instanceof Error ? lastErr : new Error(`외인 투자자 API 실패: ${ticker}`);
   }
 
   async fetchCurrentPrice(ticker: string): Promise<CurrentPriceDto> {
