@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import axios from 'axios';
@@ -23,6 +24,13 @@ export class StockMasterService implements OnApplicationBootstrap {
     }
   }
 
+  @Cron(CronExpression.EVERY_DAY_AT_2AM, {
+    timeZone: 'Asia/Seoul',
+  })
+  async handleDailySync() {
+    await this.syncFromKrx();
+  }
+
   search(q: string): Promise<StockMaster[]> {
     return this.repo
       .createQueryBuilder('sm')
@@ -32,7 +40,7 @@ export class StockMasterService implements OnApplicationBootstrap {
       .limit(10)
       .getMany();
   }
-
+  
   async syncFromKrx(): Promise<void> {
     try {
       const [kospi, kosdaq] = await Promise.all([
