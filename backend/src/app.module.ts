@@ -12,6 +12,7 @@ import { SignalModule } from './signal/signal.module';
 import { ValuationModule } from './valuation/valuation.module';
 import { DataSyncModule } from './data-sync/data-sync.module';
 import { AnalysisModule } from './analysis/analysis.module';
+import { AuthModule } from './auth/auth.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -40,7 +41,7 @@ import configuration from './config/configuration';
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
           migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
           synchronize: !isProduction,
-          migrationsRun: true,
+          migrationsRun: isProduction,
         };
       },
     }),
@@ -52,6 +53,7 @@ import configuration from './config/configuration';
     ValuationModule,
     DataSyncModule,
     AnalysisModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [

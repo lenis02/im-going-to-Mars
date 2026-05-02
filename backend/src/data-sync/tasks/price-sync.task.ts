@@ -15,8 +15,9 @@ export class PriceSyncTask {
     private readonly kisAdapter: KisAdapter,
   ) {}
 
+  // 자동 크론은 전체 종목 동기화
   @Cron('0 18 * * 1-5')
-  async run(): Promise<void> {
+  async runAll(): Promise<void> {
     try {
       await this.sync();
     } catch (err) {
@@ -27,11 +28,23 @@ export class PriceSyncTask {
     }
   }
 
-  private async sync(): Promise<void> {
-    const stocks = await this.stockService.findAll();
+  // 사용자 버튼 클릭 시 해당 유저 종목만 동기화
+  async run(userId: number): Promise<void> {
+    try {
+      await this.sync(userId);
+    } catch (err) {
+      this.logger.error(
+        `동기화 중 치명적 오류 발생: ${(err as Error).message}`,
+        (err as Error).stack,
+      );
+    }
+  }
+
+  private async sync(userId?: number): Promise<void> {
+    const stocks = await this.stockService.findAll(userId);
 
     if (stocks.length === 0) {
-      this.logger.log('등록된 종목 없음. POST /stocks 로 종목을 추가하세요.');
+      this.logger.log('등록된 종목 없음. 종목을 추가하세요.');
       return;
     }
 
@@ -44,11 +57,7 @@ export class PriceSyncTask {
 
     for (const stock of stocks) {
       try {
-        const prices = await this.kisAdapter.fetchDailyPrices(
-          stock.ticker,
-          from,
-          to,
-        );
+        const prices = await this.kisAdapter.fetchDailyPrices(stock.ticker, from, to);
 
         if (prices.length === 0) {
           this.logger.warn(`${stock.ticker} OHLCV 없음, 스킵`);
@@ -56,7 +65,6 @@ export class PriceSyncTask {
           continue;
         }
 
-        // OHLCV 최신 거래일 기준으로 투자자 API 호출 (미래/비거래일 방지)
         const latestTradingDate = new Date(prices[0].date);
         const investorData = await this.kisAdapter.fetchInvestorTradeDailyByStock(
           stock.ticker,
@@ -64,9 +72,7 @@ export class PriceSyncTask {
           latestTradingDate,
         );
 
-        const investorMap = new Map(
-          investorData.map((d) => [d.date, d.foreignNetBuy]),
-        );
+        const investorMap = new Map(investorData.map((d) => [d.date, d.foreignNetBuy]));
 
         for (const price of prices) {
           const foreignNetBuy = investorMap.get(price.date);
@@ -80,9 +86,7 @@ export class PriceSyncTask {
         successCount++;
       } catch (err) {
         failCount++;
-        this.logger.error(
-          `동기화 실패: ${stock.ticker} — ${(err as Error).message}`,
-        );
+        this.logger.error(`동기화 실패: ${stock.ticker} — ${(err as Error).message}`);
       }
     }
 

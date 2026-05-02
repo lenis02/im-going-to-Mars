@@ -8,14 +8,19 @@ import {
   Param,
   Post,
   ServiceUnavailableException,
+  UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AxiosError } from 'axios';
 import { PriceSyncTask } from './tasks/price-sync.task';
 import { SignalDetectTask } from './tasks/signal-detect.task';
 import { KisAdapter } from './adapters/kis/kis-adapter';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { User } from '../auth/entities/user.entity';
 
 @Controller('data-sync')
+@UseGuards(JwtAuthGuard)
 export class DataSyncController {
   private readonly logger = new Logger(DataSyncController.name);
 
@@ -27,8 +32,8 @@ export class DataSyncController {
 
   @Post('prices')
   @Throttle({ default: { ttl: 60_000, limit: 3 } })
-  async syncPrices() {
-    await this.priceSyncTask.run();
+  async syncPrices(@CurrentUser() user: User) {
+    await this.priceSyncTask.run(user.id);
     return { message: '일봉 동기화가 완료되었습니다.' };
   }
 
@@ -56,7 +61,6 @@ export class DataSyncController {
       return { data };
     } catch (err) {
       const axiosErr = err as AxiosError;
-      // 장 마감 등으로 KIS API가 5xx를 반환하면 503으로 조용히 처리
       if (axiosErr.response?.status && axiosErr.response.status >= 500) {
         throw new ServiceUnavailableException('시세 조회 불가 (장 마감 또는 KIS API 오류)');
       }
