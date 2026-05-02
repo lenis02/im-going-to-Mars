@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchStocks, fetchForeignRanking, deleteStock } from '../api/stock'
+import { fetchStocks, fetchForeignRanking, deleteStock, deleteAllStocks } from '../api/stock'
 import type { Stock, ForeignRankingItem } from '../api/stock'
 import { getRecentTickers, removeRecentTicker, clearRecentTickers } from '../utils/recentTickers'
 
@@ -24,25 +24,27 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect, 
     setLoading(true)
     setError(null)
     try {
-      const [stocks, ranking] = await Promise.all([fetchStocks(), fetchForeignRanking()])
-
-      const rankingMap = new Map<string, ForeignRankingItem>(
-        ranking.map((r) => [r.ticker, r]),
-      )
-
       const recentTickers = getRecentTickers()
-      const recentSet = new Set(recentTickers)
+      if (recentTickers.length === 0) {
+        setRows([])
+        return
+      }
 
-      const merged: StockRow[] = stocks
-        .filter((s) => recentSet.has(s.ticker))
-        .map((s) => {
-          const r = rankingMap.get(s.ticker)
-          return { ...s, foreignNetBuy: r?.foreignNetBuy, date: r?.date }
-        })
+      const [stocks, ranking] = await Promise.all([fetchStocks(), fetchForeignRanking()])
+      const stockMap = new Map(stocks.map((s) => [s.ticker, s]))
+      const rankingMap = new Map<string, ForeignRankingItem>(ranking.map((r) => [r.ticker, r]))
 
-      merged.sort(
-        (a, b) => recentTickers.indexOf(a.ticker) - recentTickers.indexOf(b.ticker),
-      )
+      const merged: StockRow[] = recentTickers.map((ticker) => {
+        const stock = stockMap.get(ticker)
+        const r = rankingMap.get(ticker)
+        return {
+          id: stock?.id ?? 0,
+          ticker,
+          name: stock?.name ?? ticker,
+          foreignNetBuy: r?.foreignNetBuy,
+          date: r?.date,
+        }
+      })
 
       setRows(merged)
     } catch {
@@ -61,28 +63,19 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect, 
           <h2 className="text-sm font-medium text-white tracking-tight">최근 검색 종목</h2>
           <p className="text-xs text-[#a3a3a3] mt-0.5">클릭 시 분석 · <span className="hidden sm:inline">7일 누적</span> 외인 순매수</p>
         </div>
-        <div className="flex items-center gap-2">
-          {rows.length > 0 && (
-            <button
-              onClick={async () => {
-                await Promise.allSettled(rows.map((r) => deleteStock(r.ticker)))
-                clearRecentTickers()
-                setRows([])
-                onDeleted?.()
-              }}
-              className="px-3 py-1.5 text-xs font-medium text-[#a3a3a3] bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] hover:text-[#ef4444] transition-colors cursor-pointer whitespace-nowrap"
-            >
-              모두 삭제
-            </button>
-          )}
+        {rows.length > 0 && (
           <button
-            onClick={() => void load()}
-            disabled={loading}
-            className="px-3 py-1.5 text-xs font-medium text-[#a3a3a3] bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] hover:text-white disabled:opacity-50 transition-colors cursor-pointer whitespace-nowrap"
+            onClick={async () => {
+              await deleteAllStocks()
+              clearRecentTickers()
+              setRows([])
+              onDeleted?.()
+            }}
+            className="px-3 py-1.5 text-xs font-medium text-[#a3a3a3] bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] hover:text-[#ef4444] transition-colors cursor-pointer whitespace-nowrap"
           >
-            {loading ? '로딩 중...' : '새로고침'}
+            모두 삭제
           </button>
-        </div>
+        )}
       </div>
 
       {error && (

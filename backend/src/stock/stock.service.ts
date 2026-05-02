@@ -87,4 +87,8 @@ export class StockService {
     const stock = await this.findOne(ticker);
     await this.stockRepo.remove(stock);
   }
+
+  async removeAll(): Promise<void> {
+    await this.stockRepo.query('DELETE FROM stock');
+  }
 }

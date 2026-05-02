@@ -5,7 +5,13 @@ import type { ForeignRankingItem } from '../api/stock';
 type SortKey = 'consecutiveDays' | 'foreignNetBuy'
 type SortDir = 'asc' | 'desc'
 
-export default function ForeignRankingTable({ refreshKey }: { refreshKey?: number }) {
+interface Props {
+  refreshKey?: number
+  onSelect?: (ticker: string) => void
+  selectedTicker?: string | null
+}
+
+export default function ForeignRankingTable({ refreshKey, onSelect, selectedTicker }: Props) {
   const [data, setData] = useState<ForeignRankingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,18 +55,9 @@ export default function ForeignRankingTable({ refreshKey }: { refreshKey?: numbe
 
   return (
     <div className="bg-[#141414] border border-[#262626] rounded-sm overflow-hidden">
-      <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#262626]">
-        <div>
-          <h2 className="text-sm font-medium text-white tracking-tight">외국인 순매수 순위</h2>
-          <p className="text-xs text-[#a3a3a3] mt-0.5">최근 동기화 기준 주간 누적 순매수량</p>
-        </div>
-        <button
-          onClick={() => void load()}
-          disabled={loading}
-          className="px-3 py-1.5 text-xs font-medium text-[#a3a3a3] bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] hover:text-white disabled:opacity-50 transition-colors cursor-pointer"
-        >
-          {loading ? '로딩 중...' : '새로고침'}
-        </button>
+      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[#262626]">
+        <h2 className="text-sm font-medium text-white tracking-tight">외국인 순매수 순위</h2>
+        <p className="text-xs text-[#a3a3a3] mt-0.5">최근 동기화 기준 주간 누적 순매수량</p>
       </div>
 
       {error && (
@@ -101,7 +98,13 @@ export default function ForeignRankingTable({ refreshKey }: { refreshKey?: numbe
                 </tr>
               ))
             : sorted.map((item, idx) => (
-                <tr key={item.ticker} className="hover:bg-[#1a1a1a] transition-colors">
+                <tr
+                  key={item.ticker}
+                  onClick={() => onSelect?.(item.ticker)}
+                  className={`transition-colors ${onSelect ? 'cursor-pointer' : ''} ${
+                    selectedTicker === item.ticker ? 'bg-[#1c1c1c]' : 'hover:bg-[#1a1a1a]'
+                  }`}
+                >
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-right font-mono text-[#a3a3a3]">
                     {idx + 1}
                   </td>

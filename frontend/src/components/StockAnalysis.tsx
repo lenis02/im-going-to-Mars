@@ -4,6 +4,7 @@ import type { CurrentQuote, DailyPrice, Stock, StockSignal } from '../api/stock'
 
 interface Props {
   ticker: string
+  refreshKey?: number
 }
 
 function calcRolling7(prices: DailyPrice[]) {
@@ -130,7 +131,7 @@ function signalStatusToKey(status: StockSignal['status']): keyof typeof SIGNAL_C
   return 'watch'
 }
 
-export default function StockAnalysis({ ticker }: Props) {
+export default function StockAnalysis({ ticker, refreshKey }: Props) {
   const [prices, setPrices] = useState<DailyPrice[]>([])
   const [stock, setStock] = useState<Stock | null>(null)
   const [quote, setQuote] = useState<CurrentQuote | null>(null)
@@ -162,7 +163,7 @@ export default function StockAnalysis({ ticker }: Props) {
       .then((signalData) => setSignal(signalData))
       .catch(() => setError('데이터를 불러오지 못했습니다.'))
       .finally(() => setLoading(false))
-  }, [ticker])
+  }, [ticker, refreshKey])
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -182,7 +183,7 @@ export default function StockAnalysis({ ticker }: Props) {
   if (error || prices.length === 0) {
     return (
       <div className="bg-[#141414] border border-[#262626] rounded-sm px-4 py-8 text-center text-sm text-[#a3a3a3]">
-        {error ?? '동기화 후 분석이 가능합니다. POST /data-sync/prices를 실행해주세요.'}
+        {error ?? '일봉 데이터가 없습니다. 상단의 일봉 동기화 버튼을 눌러주세요.'}
       </div>
     )
   }

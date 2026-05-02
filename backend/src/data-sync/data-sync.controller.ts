@@ -26,11 +26,10 @@ export class DataSyncController {
   ) {}
 
   @Post('prices')
-  @HttpCode(HttpStatus.ACCEPTED)
   @Throttle({ default: { ttl: 60_000, limit: 3 } })
-  syncPrices() {
-    void this.priceSyncTask.run();
-    return { message: '일봉 동기화를 시작했습니다.' };
+  async syncPrices() {
+    await this.priceSyncTask.run();
+    return { message: '일봉 동기화가 완료되었습니다.' };
   }
 
   @Post('signals')
