@@ -59,7 +59,7 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect, 
       <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#262626]">
         <div>
           <h2 className="text-sm font-medium text-white tracking-tight">최근 검색 종목</h2>
-          <p className="text-xs text-[#a3a3a3] mt-0.5">종목 클릭 시 분석 화면으로 이동 · 7일 누적 외인 순매수</p>
+          <p className="text-xs text-[#a3a3a3] mt-0.5">클릭 시 분석 · <span className="hidden sm:inline">7일 누적</span> 외인 순매수</p>
         </div>
         <div className="flex items-center gap-2">
           {rows.length > 0 && (
@@ -97,19 +97,18 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect, 
             <tr className="border-b border-[#1c1c1c] text-[#a3a3a3] text-xs uppercase tracking-wider">
               <th className="px-3 sm:px-6 py-3 text-left font-medium">종목명</th>
               <th className="px-3 sm:px-6 py-3 text-right font-medium">7일 순매수</th>
-              <th className="px-3 sm:px-6 py-3 text-center font-medium">기준일</th>
-              <th className="px-3 sm:px-6 py-3" />
+              <th className="hidden sm:table-cell px-6 py-3 text-center font-medium">기준일</th>
+              <th className="px-3 py-3 w-8" />
             </tr>
           </thead>
           <tbody className="divide-y divide-[#1c1c1c]">
             {loading ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <tr key={i}>
-                  {Array.from({ length: 3 }).map((__, j) => (
-                    <td key={j} className="px-3 sm:px-6 py-3 sm:py-4">
-                      <div className="h-3 bg-[#262626] rounded-sm animate-pulse" />
-                    </td>
-                  ))}
+                  <td className="px-3 sm:px-6 py-3 sm:py-4"><div className="h-3 bg-[#262626] rounded-sm animate-pulse" /></td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4"><div className="h-3 bg-[#262626] rounded-sm animate-pulse" /></td>
+                  <td className="hidden sm:table-cell px-6 py-3 sm:py-4"><div className="h-3 bg-[#262626] rounded-sm animate-pulse" /></td>
+                  <td className="px-3 py-3 sm:py-4 w-8" />
                 </tr>
               ))
             ) : (
@@ -124,7 +123,7 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect, 
                   }`}
                 >
                   <td className="px-3 sm:px-6 py-3 sm:py-4 font-medium text-white">{row.name}</td>
-                  <td className={`px-6 py-4 text-right font-mono font-medium ${
+                  <td className={`px-3 sm:px-6 py-3 sm:py-4 text-right font-mono font-medium ${
                     row.foreignNetBuy === undefined
                       ? 'text-[#a3a3a3]'
                       : row.foreignNetBuy >= 0
@@ -132,13 +131,13 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect, 
                         : 'text-[#3b82f6]'
                   }`}>
                     {row.foreignNetBuy === undefined
-                      ? '동기화 필요'
+                      ? '—'
                       : Number(row.foreignNetBuy).toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 text-center text-[#a3a3a3] text-xs">
+                  <td className="hidden sm:table-cell px-6 py-3 sm:py-4 text-center text-[#a3a3a3] text-xs">
                     {row.date ?? '—'}
                   </td>
-                  <td className="px-3 sm:px-4 py-3 sm:py-4 text-right">
+                  <td className="px-3 py-3 sm:py-4 text-right w-8">
                     <button
                       onClick={async (e) => {
                         e.stopPropagation()

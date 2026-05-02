@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { lookupStock, createStock } from '../api/stock'
+import { lookupStock, createStock, fetchStocks } from '../api/stock'
 import type { StockLookupResult } from '../api/stock'
 import { addRecentTicker } from '../utils/recentTickers'
 
@@ -10,6 +10,7 @@ interface Props {
 export default function StockAddForm({ onAdded }: Props) {
   const [ticker, setTicker] = useState('')
   const [preview, setPreview] = useState<StockLookupResult | null>(null)
+  const [isDuplicate, setIsDuplicate] = useState(false)
   const [lookupLoading, setLookupLoading] = useState(false)
   const [lookupError, setLookupError] = useState<string | null>(null)
   const [addLoading, setAddLoading] = useState(false)
@@ -21,9 +22,11 @@ export default function StockAddForm({ onAdded }: Props) {
     setLookupLoading(true)
     setLookupError(null)
     setPreview(null)
+    setIsDuplicate(false)
     try {
-      const result = await lookupStock(t)
+      const [result, stocks] = await Promise.all([lookupStock(t), fetchStocks()])
       setPreview(result)
+      setIsDuplicate(stocks.some((s) => s.ticker === result.ticker))
     } catch {
       setLookupError('종목을 찾을 수 없습니다. 종목코드를 확인해주세요.')
     } finally {
@@ -79,18 +82,23 @@ export default function StockAddForm({ onAdded }: Props) {
       )}
 
       {preview && (
-        <div className="mt-4 flex items-center gap-4 px-4 py-3 bg-[#1c1c1c] border border-[#262626] rounded-sm">
-          <div className="flex-1 flex items-center gap-2">
-            <span className="font-mono font-medium text-[#22c55e] text-sm">{preview.ticker}</span>
-            <span className="text-[#a3a3a3]">·</span>
-            <span className="font-medium text-white text-sm">{preview.name}</span>
+        <div className={`mt-4 flex items-center gap-4 px-4 py-3 bg-[#1c1c1c] border rounded-sm ${isDuplicate ? 'border-[#f59e0b]/40' : 'border-[#262626]'}`}>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-mono font-medium text-[#22c55e] text-sm">{preview.ticker}</span>
+              <span className="text-[#a3a3a3]">·</span>
+              <span className="font-medium text-white text-sm">{preview.name}</span>
+            </div>
+            {isDuplicate && (
+              <p className="text-[11px] text-[#f59e0b] mt-1">이미 추가된 종목입니다. 다시 추가하면 목록 상단으로 이동합니다.</p>
+            )}
           </div>
           <button
             onClick={() => void handleAdd()}
             disabled={addLoading}
-            className="px-4 py-2 text-xs font-medium text-white bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] disabled:opacity-40 transition-colors cursor-pointer"
+            className="shrink-0 px-4 py-2 text-xs font-medium text-white bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] disabled:opacity-40 transition-colors cursor-pointer"
           >
-            {addLoading ? '추가 중...' : '추가하기'}
+            {addLoading ? '추가 중...' : isDuplicate ? '재추가' : '추가하기'}
           </button>
         </div>
       )}

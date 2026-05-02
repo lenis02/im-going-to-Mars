@@ -91,6 +91,14 @@ export async function deleteStock(ticker: string): Promise<void> {
   await api.delete(`/stocks/${ticker}`)
 }
 
+export async function syncPrices(): Promise<void> {
+  await api.post('/data-sync/prices')
+}
+
+export async function syncSignals(): Promise<void> {
+  await api.post('/data-sync/signals')
+}
+
 export async function fetchSignal(ticker: string, changeRate?: number): Promise<StockSignal> {
   const res = await api.get<{ data: StockSignal }>(`/stocks/${ticker}/prices/signal`, {
     params: changeRate !== undefined ? { changeRate } : {},

@@ -2,10 +2,34 @@ import { useEffect, useState } from 'react';
 import { fetchForeignRanking } from '../api/stock';
 import type { ForeignRankingItem } from '../api/stock';
 
+type SortKey = 'consecutiveDays' | 'foreignNetBuy'
+type SortDir = 'asc' | 'desc'
+
 export default function ForeignRankingTable({ refreshKey }: { refreshKey?: number }) {
   const [data, setData] = useState<ForeignRankingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>('foreignNetBuy');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
+    } else {
+      setSortKey(key);
+      setSortDir('desc');
+    }
+  };
+
+  const sorted = [...data].sort((a, b) => {
+    const mul = sortDir === 'desc' ? -1 : 1;
+    return (a[sortKey] - b[sortKey]) * mul;
+  });
+
+  const SortIcon = ({ col }: { col: SortKey }) => {
+    if (sortKey !== col) return <span className="text-[#525252] ml-1">↕</span>;
+    return <span className="text-[#a3a3a3] ml-1">{sortDir === 'desc' ? '↓' : '↑'}</span>;
+  };
 
   const load = async () => {
     setLoading(true);
@@ -50,8 +74,18 @@ export default function ForeignRankingTable({ refreshKey }: { refreshKey?: numbe
           <tr className="border-b border-[#1c1c1c] text-[#a3a3a3] text-xs uppercase tracking-wider">
             <th className="px-3 sm:px-6 py-3 text-right font-medium w-8 sm:w-12">순위</th>
             <th className="px-3 sm:px-6 py-3 text-left font-medium">종목명</th>
-            <th className="px-3 sm:px-6 py-3 text-right font-medium">연속</th>
-            <th className="px-3 sm:px-6 py-3 text-right font-medium">주간 순매수</th>
+            <th
+              className="px-3 sm:px-6 py-3 text-right font-medium cursor-pointer hover:text-white select-none transition-colors"
+              onClick={() => handleSort('consecutiveDays')}
+            >
+              연속<SortIcon col="consecutiveDays" />
+            </th>
+            <th
+              className="px-3 sm:px-6 py-3 text-right font-medium cursor-pointer hover:text-white select-none transition-colors"
+              onClick={() => handleSort('foreignNetBuy')}
+            >
+              주간 순매수<SortIcon col="foreignNetBuy" />
+            </th>
             <th className="hidden sm:table-cell px-6 py-3 text-center font-medium">기준일</th>
           </tr>
         </thead>
@@ -66,7 +100,7 @@ export default function ForeignRankingTable({ refreshKey }: { refreshKey?: numbe
                   ))}
                 </tr>
               ))
-            : data.map((item, idx) => (
+            : sorted.map((item, idx) => (
                 <tr key={item.ticker} className="hover:bg-[#1a1a1a] transition-colors">
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-right font-mono text-[#a3a3a3]">
                     {idx + 1}
@@ -80,7 +114,7 @@ export default function ForeignRankingTable({ refreshKey }: { refreshKey?: numbe
                     </span>
                   </td>
                   <td className={`px-3 sm:px-6 py-3 sm:py-4 text-right font-mono font-medium ${item.foreignNetBuy >= 0 ? 'text-[#ef4444]' : 'text-[#3b82f6]'}`}>
-                    {item.foreignNetBuy.toLocaleString()}
+                    {Number(item.foreignNetBuy).toLocaleString()}
                   </td>
                   <td className="hidden sm:table-cell px-6 py-3 sm:py-4 text-center text-[#a3a3a3] text-xs">
                     {item.date}
