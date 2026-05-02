@@ -10,7 +10,8 @@
       "Bash(docker exec imgoingtomars-db-1 *)",
       "Bash(node -e \"const ti = require\\('technicalindicators'\\); console.log\\(Object.keys\\(ti\\).filter\\(k => /hammer|crow|tasuki/i.test\\(k\\)\\)\\)\")",
       "Bash(node -e ' *)",
-      "Bash(npm uninstall *)"
+      "Bash(npm uninstall *)",
+      "Bash(npx tsc *)"
     ]
   }
 }

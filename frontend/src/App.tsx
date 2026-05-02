@@ -7,28 +7,29 @@ import Onboarding from './components/Onboarding';
 import Login from './components/Login';
 import { getRecentTickers } from './utils/recentTickers';
 import { syncPrices } from './api/stock';
-import { setToken, clearToken, isLoggedIn } from './utils/auth';
+import { clearToken, isLoggedIn } from './utils/auth';
 
-type AppPhase = 'guide' | 'app'
+type AppPhase = 'guide' | 'app';
 
 const SYNC_COOLDOWN_SEC = 60;
-
+// 🚨 [핵심!] React 컴포넌트 바깥(최상단)에서 URL을 가로채서 동기적으로 처리합니다.
+const handleOAuthToken = () => {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+  if (token) {
+    localStorage.setItem('swt_token', token);
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+};
+// 스크립트가 로드되자마자 실행
+handleOAuthToken();
 export default function App() {
-  const [loggedIn, setLoggedIn] = useState(() => isLoggedIn())
-  const [phase, setPhase] = useState<AppPhase>(
-    () => (localStorage.getItem('swt_visited') ? 'app' : 'guide')
-  )
+  const [loggedIn, setLoggedIn] = useState(() => isLoggedIn());
 
-  // Google OAuth 콜백: URL에 ?token= 파라미터 처리
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const token = params.get('token')
-    if (token) {
-      setToken(token)
-      setLoggedIn(true)
-      window.history.replaceState({}, '', window.location.pathname)
-    }
-  }, [])
+  const [phase, setPhase] = useState<AppPhase>(() =>
+    localStorage.getItem('swt_visited') ? 'app' : 'guide',
+  );
+
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedTicker, setSelectedTicker] = useState<string | null>(
     () => getRecentTickers()[0] ?? null,
@@ -61,9 +62,9 @@ export default function App() {
   };
 
   const handleGuideStart = () => {
-    localStorage.setItem('swt_visited', '1')
-    setPhase('app')
-  }
+    localStorage.setItem('swt_visited', '1');
+    setPhase('app');
+  };
 
   const handleSyncPrices = async () => {
     if (cooldown > 0) {
@@ -104,14 +105,15 @@ export default function App() {
   };
 
   if (!loggedIn) {
-    return <Login />
+    return <Login />;
   }
 
   if (phase === 'guide') {
-    return <Onboarding onStart={handleGuideStart} />
+    return <Onboarding onStart={handleGuideStart} />;
   }
 
-  const syncBtnBase = 'px-2.5 sm:px-3 py-1.5 text-xs font-medium border rounded-sm transition-colors cursor-pointer whitespace-nowrap disabled:opacity-40';
+  const syncBtnBase =
+    'px-2.5 sm:px-3 py-1.5 text-xs font-medium border rounded-sm transition-colors cursor-pointer whitespace-nowrap disabled:opacity-40';
   const syncBtnColor = syncWarning
     ? 'text-[#ef4444] bg-[#1c1c1c] border-[#ef4444]'
     : cooldown > 0
@@ -124,8 +126,12 @@ export default function App() {
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center">
           <div className="text-center">
             <div className="w-8 h-8 border-2 border-[#333] border-t-white rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-sm font-medium text-white">일봉 데이터 동기화 중...</p>
-            <p className="text-xs text-[#a3a3a3] mt-1">완료되면 자동으로 새로고침됩니다</p>
+            <p className="text-sm font-medium text-white">
+              일봉 데이터 동기화 중...
+            </p>
+            <p className="text-xs text-[#a3a3a3] mt-1">
+              완료되면 자동으로 새로고침됩니다
+            </p>
           </div>
         </div>
       )}
@@ -135,18 +141,28 @@ export default function App() {
             <span className="sm:hidden">스윙 보조 도구</span>
             <span className="hidden sm:inline">
               너넨 지금 전혀 스윙하고 있지 않아
-              <span className="text-sm font-normal text-[#a3a3a3]"> — 스윙 투자 보조 도구</span>
+              <span className="text-sm font-normal text-[#a3a3a3]">
+                {' '}
+                — 스윙 투자 보조 도구
+              </span>
             </span>
           </h1>
           <div className="flex items-center gap-1.5 shrink-0">
             {syncWarning && (
-              <span className="text-xs text-[#ef4444] whitespace-nowrap">너무 자주 동기화할 수 없어요</span>
+              <span className="text-xs text-[#ef4444] whitespace-nowrap">
+                너무 자주 동기화할 수 없어요
+              </span>
             )}
             {syncError && !syncWarning && (
-              <span className="text-xs text-[#ef4444] whitespace-nowrap">{syncError}</span>
+              <span className="text-xs text-[#ef4444] whitespace-nowrap">
+                {syncError}
+              </span>
             )}
             <button
-              onClick={() => { clearToken(); setLoggedIn(false) }}
+              onClick={() => {
+                clearToken();
+                setLoggedIn(false);
+              }}
               className="px-2.5 sm:px-3 py-1.5 text-xs font-medium text-[#525252] bg-[#1c1c1c] border border-[#262626] rounded-sm hover:text-[#ef4444] transition-colors cursor-pointer whitespace-nowrap"
             >
               로그아웃
@@ -165,7 +181,9 @@ export default function App() {
               {cooldown > 0 ? (
                 <>
                   <span className="sm:hidden">동기화 ({cooldown}s)</span>
-                  <span className="hidden sm:inline">일봉 동기화 ({cooldown}s)</span>
+                  <span className="hidden sm:inline">
+                    일봉 동기화 ({cooldown}s)
+                  </span>
                 </>
               ) : (
                 <>
@@ -179,14 +197,20 @@ export default function App() {
       </header>
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex flex-col gap-4">
         <StockAddForm onAdded={handleAdded} />
-        {selectedTicker && <StockAnalysis ticker={selectedTicker} refreshKey={refreshKey} />}
+        {selectedTicker && (
+          <StockAnalysis ticker={selectedTicker} refreshKey={refreshKey} />
+        )}
         <RecentStockList
           refreshKey={refreshKey}
           onSelect={setSelectedTicker}
           selectedTicker={selectedTicker}
           onDeleted={handleDeleted}
         />
-        <ForeignRankingTable refreshKey={refreshKey} onSelect={setSelectedTicker} selectedTicker={selectedTicker} />
+        <ForeignRankingTable
+          refreshKey={refreshKey}
+          onSelect={setSelectedTicker}
+          selectedTicker={selectedTicker}
+        />
       </main>
     </div>
   );
