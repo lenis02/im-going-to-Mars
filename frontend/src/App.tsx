@@ -5,14 +5,12 @@ import StockAnalysis from './components/StockAnalysis';
 import ForeignRankingTable from './components/ForeignRankingTable';
 import Onboarding from './components/Onboarding';
 import Login from './components/Login';
-import { getRecentTickers } from './utils/recentTickers';
-import { syncPrices } from './api/stock';
+import { fetchStocks, syncPrices } from './api/stock';
 import { clearToken, isLoggedIn } from './utils/auth';
 
 type AppPhase = 'guide' | 'app';
 
 const SYNC_COOLDOWN_SEC = 60;
-// 🚨 [핵심!] React 컴포넌트 바깥(최상단)에서 URL을 가로채서 동기적으로 처리합니다.
 const handleOAuthToken = () => {
   const params = new URLSearchParams(window.location.search);
   const token = params.get('token');
@@ -31,14 +29,25 @@ export default function App() {
   );
 
   const [refreshKey, setRefreshKey] = useState(0);
-  const [selectedTicker, setSelectedTicker] = useState<string | null>(
-    () => getRecentTickers()[0] ?? null,
-  );
+  const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [syncingPrices, setSyncingPrices] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [syncWarning, setSyncWarning] = useState(false);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (loggedIn) {
+      fetchStocks()
+        .then((stocks) => {
+          // 목록이 있고, 현재 선택된 종목이 없다면 가장 최신(첫 번째) 종목을 선택
+          if (stocks.length > 0 && !selectedTicker) {
+            setSelectedTicker(stocks[0].ticker);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [loggedIn, refreshKey]);
 
   useEffect(() => {
     return () => {
@@ -96,12 +105,12 @@ export default function App() {
   };
 
   const handleDeleted = (deletedTicker?: string) => {
-    setRefreshKey((k) => k + 1);
     if (deletedTicker && selectedTicker === deletedTicker) {
-      setSelectedTicker(getRecentTickers()[0] ?? null);
+      setSelectedTicker(null); // 지운 종목이 현재 보고 있던 종목이면 비움 (useEffect가 새 종목 채워줌)
     } else if (!deletedTicker) {
-      setSelectedTicker(null);
+      setSelectedTicker(null); // 전체 삭제
     }
+    setRefreshKey((k) => k + 1); // 화면 갱신
   };
 
   if (!loggedIn) {
