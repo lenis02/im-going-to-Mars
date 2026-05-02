@@ -127,3 +127,14 @@ export async function fetchSignal(ticker: string, changeRate?: number): Promise<
   })
   return res.data.data
 }
+
+export interface StockMasterItem {
+  ticker: string
+  name: string
+  market: string
+}
+
+export async function searchStockMaster(q: string): Promise<StockMasterItem[]> {
+  const res = await api.get<{ data: StockMasterItem[] }>('/stock-master/search', { params: { q } })
+  return res.data.data
+}

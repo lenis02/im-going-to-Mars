@@ -1,107 +1,172 @@
-import { useState } from 'react'
-import { lookupStock, createStock, fetchStocks } from '../api/stock'
-import type { StockLookupResult } from '../api/stock'
-import { addRecentTicker } from '../utils/recentTickers'
+import { useEffect, useRef, useState } from 'react';
+import { searchStockMaster, createStock, fetchStocks } from '../api/stock';
+import type { StockMasterItem } from '../api/stock';
 
 interface Props {
-  onAdded: (ticker: string) => void
+  onAdded: (ticker: string) => void;
 }
 
 export default function StockAddForm({ onAdded }: Props) {
-  const [ticker, setTicker] = useState('')
-  const [preview, setPreview] = useState<StockLookupResult | null>(null)
-  const [isDuplicate, setIsDuplicate] = useState(false)
-  const [lookupLoading, setLookupLoading] = useState(false)
-  const [lookupError, setLookupError] = useState<string | null>(null)
-  const [addLoading, setAddLoading] = useState(false)
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<StockMasterItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<StockMasterItem | null>(null);
+  const [isDuplicate, setIsDuplicate] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [addLoading, setAddLoading] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleLookup = async () => {
-    const t = ticker.trim().toUpperCase()
-    if (!t) return
-
-    setLookupLoading(true)
-    setLookupError(null)
-    setPreview(null)
-    setIsDuplicate(false)
-    try {
-      const [result, stocks] = await Promise.all([lookupStock(t), fetchStocks()])
-      setPreview(result)
-      setIsDuplicate(stocks.some((s) => s.ticker === result.ticker))
-    } catch {
-      setLookupError('종목을 찾을 수 없습니다. 종목코드를 확인해주세요.')
-    } finally {
-      setLookupLoading(false)
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!query.trim()) {
+      setResults([]);
+      setOpen(false);
+      return;
     }
-  }
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const data = await searchStockMaster(query.trim());
+        setResults(data);
+        setOpen(true);
+      } catch {
+        setResults([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleSelect = async (item: StockMasterItem) => {
+    setSelected(item);
+    setQuery(item.name);
+    setOpen(false);
+    setAddError(null);
+    const stocks = await fetchStocks();
+    setIsDuplicate(stocks.some((s) => s.ticker === item.ticker));
+  };
 
   const handleAdd = async () => {
-    if (!preview) return
-
-    setAddLoading(true)
+    if (!selected) return;
+    setAddLoading(true);
+    setAddError(null);
     try {
-      await createStock(preview)
-      addRecentTicker(preview.ticker)
-      setTicker('')
-      setPreview(null)
-      onAdded(preview.ticker)
+      await createStock({ ticker: selected.ticker, name: selected.name });
+      setQuery('');
+      setSelected(null);
+      setIsDuplicate(false);
+      onAdded(selected.ticker);
     } catch {
-      setLookupError('등록에 실패했습니다.')
+      setAddError('등록에 실패했습니다.');
     } finally {
-      setAddLoading(false)
+      setAddLoading(false);
     }
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') void handleLookup()
-  }
+  };
 
   return (
     <div className="bg-[#141414] border border-[#262626] rounded-sm px-4 sm:px-6 py-4 sm:py-5">
-      <h2 className="text-sm font-medium text-white mb-4 tracking-tight">종목 추가</h2>
+      <h2 className="text-sm font-medium text-white mb-4 tracking-tight">
+        종목 추가
+      </h2>
 
-      <div className="flex gap-2 sm:gap-3 items-center">
-        <input
-          value={ticker}
-          onChange={(e) => { setTicker(e.target.value); setPreview(null) }}
-          onKeyDown={handleKeyDown}
-          placeholder="종목코드 입력 (예: 005930)"
-          maxLength={6}
-          className="flex-1 min-w-0 sm:flex-none sm:w-56 px-3 py-2 text-sm bg-[#0d0d0d] border border-[#333] rounded-sm focus:outline-none focus:border-[#525252] font-mono text-white placeholder-[#a3a3a3] transition-colors"
-        />
-        <button
-          onClick={() => void handleLookup()}
-          disabled={lookupLoading || !ticker.trim()}
-          className="px-4 py-2 text-xs font-medium text-[#a3a3a3] bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] hover:text-white disabled:opacity-40 transition-colors cursor-pointer"
-        >
-          {lookupLoading ? '조회 중...' : '조회'}
-        </button>
+      <div className="relative" ref={containerRef}>
+        <div className="relative sm:w-80">
+          <input
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelected(null);
+            }}
+            onFocus={() => results.length > 0 && setOpen(true)}
+            placeholder="종목명 검색 (예: 삼성전자)"
+            className="w-full px-3 py-2 text-sm bg-[#0d0d0d] border border-[#333] rounded-sm focus:outline-none focus:border-[#525252] text-white placeholder-[#a3a3a3] transition-colors"
+          />
+          {loading && (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2">
+              <span className="w-3.5 h-3.5 border border-[#525252] border-t-white rounded-full animate-spin inline-block" />
+            </span>
+          )}
+        </div>
+
+        {open && (
+          <ul className="absolute z-10 top-full mt-1 sm:w-80 w-full bg-[#1c1c1c] border border-[#333] rounded-sm shadow-lg max-h-60 overflow-y-auto">
+            {results.length === 0 ? (
+              <li className="px-3 py-2.5 text-xs text-[#525252]">
+                검색 결과 없음
+              </li>
+            ) : (
+              results.map((item) => (
+                <li
+                  key={item.ticker}
+                  onMouseDown={() => void handleSelect(item)}
+                  className="flex items-center gap-3 px-3 py-2.5 hover:bg-[#262626] cursor-pointer"
+                >
+                  <span className="font-mono text-xs text-[#22c55e] w-14 shrink-0">
+                    {item.ticker}
+                  </span>
+                  <span className="text-sm text-white truncate">
+                    {item.name}
+                  </span>
+                  <span className="ml-auto text-xs text-[#525252] shrink-0">
+                    {item.market}
+                  </span>
+                </li>
+              ))
+            )}
+          </ul>
+        )}
       </div>
 
-      {lookupError && (
-        <p className="mt-3 text-xs text-[#ef4444]">{lookupError}</p>
-      )}
+      {addError && <p className="mt-3 text-xs text-[#ef4444]">{addError}</p>}
 
-      {preview && (
-        <div className={`mt-4 flex items-center gap-4 px-4 py-3 bg-[#1c1c1c] border rounded-sm ${isDuplicate ? 'border-[#f59e0b]/40' : 'border-[#262626]'}`}>
+      {selected && (
+        <div
+          className={`mt-4 flex items-center gap-4 px-4 py-3 bg-[#1c1c1c] border rounded-sm ${isDuplicate ? 'border-[#f59e0b]/40' : 'border-[#262626]'}`}
+        >
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-mono font-medium text-[#22c55e] text-sm">{preview.ticker}</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono font-medium text-[#22c55e] text-sm">
+                {selected.ticker}
+              </span>
               <span className="text-[#a3a3a3]">·</span>
-              <span className="font-medium text-white text-sm">{preview.name}</span>
+              <span className="font-medium text-white text-sm">
+                {selected.name}
+              </span>
+              <span className="text-xs text-[#525252]">{selected.market}</span>
             </div>
             {isDuplicate && (
-              <p className="text-[11px] text-[#f59e0b] mt-1">이미 추가된 종목입니다. 다시 추가하면 목록 상단으로 이동합니다.</p>
+              <p className="text-[11px] text-[#f59e0b] mt-1">
+                이미 추가된 종목입니다. 다시 추가하면 목록 상단으로 이동합니다.
+              </p>
             )}
           </div>
           <button
             onClick={() => void handleAdd()}
             disabled={addLoading}
-            className="shrink-0 px-4 py-2 text-xs font-medium text-white bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] disabled:opacity-40 transition-colors cursor-pointer"
+            className="shrink-0 px-4 py-2 text-xs font-medium text-[#a3a3a3] bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] hover:text-white disabled:opacity-40 transition-colors cursor-pointer"
           >
             {addLoading ? '추가 중...' : isDuplicate ? '재추가' : '추가하기'}
           </button>
         </div>
       )}
     </div>
-  )
+  );
 }

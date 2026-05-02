@@ -13,6 +13,7 @@ import { ValuationModule } from './valuation/valuation.module';
 import { DataSyncModule } from './data-sync/data-sync.module';
 import { AnalysisModule } from './analysis/analysis.module';
 import { AuthModule } from './auth/auth.module';
+import { StockMasterModule } from './stock-master/stock-master.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -54,6 +55,7 @@ import configuration from './config/configuration';
     DataSyncModule,
     AnalysisModule,
     AuthModule,
+    StockMasterModule,
   ],
   controllers: [AppController],
   providers: [

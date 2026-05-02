@@ -21,9 +21,9 @@ export class StockService {
 
   findAll(userId?: number): Promise<Stock[]> {
     if (userId !== undefined) {
-      return this.stockRepo.find({ where: { userId }, order: { ticker: 'ASC' } });
+      return this.stockRepo.find({ where: { userId }, order: { ticker: 'DESC' } });
     }
-    return this.stockRepo.find({ order: { ticker: 'ASC' } });
+    return this.stockRepo.find({ order: { ticker: 'DESC' } });
   }
 
   findForeignRanking(userId: number): Promise<ForeignRankingRow[]> {
