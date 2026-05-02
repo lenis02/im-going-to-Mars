@@ -81,6 +81,7 @@ export async function fetchCurrentQuote(ticker: string): Promise<CurrentQuote> {
 export interface StockSignal {
   patternName: string
   patternCategory: string | null
+  stopLoss: number
   status: '스윙 진입' | '과열/하락 경고' | '관심 집중' | '조건 대기'
   isRecommend: boolean
   reason: string

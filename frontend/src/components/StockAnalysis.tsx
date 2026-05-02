@@ -362,6 +362,20 @@ export default function StockAnalysis({ ticker }: Props) {
                   )}
                 </div>
               </div>
+
+              {signal.stopLoss > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[#a3a3a3]">손절 추천가</span>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold font-mono tabular-nums text-[#ef4444]">
+                      {signal.stopLoss.toLocaleString()}원
+                    </p>
+                    <p className="text-[11px] text-[#a3a3a3]">
+                      현재가 대비 {(((signal.stopLoss - latestClose) / latestClose) * 100).toFixed(2)}%
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 시그널 근거 */}
