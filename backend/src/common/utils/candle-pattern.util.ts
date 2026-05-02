@@ -52,7 +52,9 @@ export class CandlePatternDetector {
   private readonly cache = new Map<string, PatternResult>();
 
   constructor() {
-    this.groq = new Groq({ apiKey: process.env.GROQ_API_KEY ?? '' });
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) throw new Error('GROQ_API_KEY 환경변수가 설정되지 않았습니다.');
+    this.groq = new Groq({ apiKey });
   }
 
   // 장 중이면 null(캐시 무시), 그 외에는 날짜 기반 키 반환

@@ -9,6 +9,7 @@ import {
   Post,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AxiosError } from 'axios';
 import { PriceSyncTask } from './tasks/price-sync.task';
 import { SignalDetectTask } from './tasks/signal-detect.task';
@@ -26,6 +27,7 @@ export class DataSyncController {
 
   @Post('prices')
   @HttpCode(HttpStatus.ACCEPTED)
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
   syncPrices() {
     void this.priceSyncTask.run();
     return { message: '일봉 동기화를 시작했습니다.' };
@@ -33,6 +35,7 @@ export class DataSyncController {
 
   @Post('signals')
   @HttpCode(HttpStatus.ACCEPTED)
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
   detectSignals() {
     void this.signalDetectTask.run();
     return { message: '신호 탐지를 시작했습니다.' };
