@@ -91,9 +91,9 @@ export class StockMasterService implements OnApplicationBootstrap {
 
     return rows
       .map((row) => {
-        const rawTicker = String(row['종목코드'] ?? '').replace(/\s/g, '');
+        const rawTicker = (row['종목코드'] as string || '').toString().replace(/\s/g, '');
         const ticker = rawTicker.padStart(6, '0');
-        const name = String(row['회사명'] ?? '').trim();
+        const name = (row['회사명'] as string || '').toString().trim();        
         return { ticker, name, market };
       })
       .filter((r) => /^\d{6}$/.test(r.ticker) && r.name.length > 0);
