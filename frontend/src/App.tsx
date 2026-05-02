@@ -4,17 +4,31 @@ import RecentStockList from './components/RecentStockList';
 import StockAnalysis from './components/StockAnalysis';
 import ForeignRankingTable from './components/ForeignRankingTable';
 import Onboarding from './components/Onboarding';
+import Login from './components/Login';
 import { getRecentTickers } from './utils/recentTickers';
 import { syncPrices } from './api/stock';
+import { setToken, clearToken, isLoggedIn } from './utils/auth';
 
 type AppPhase = 'guide' | 'app'
 
 const SYNC_COOLDOWN_SEC = 60;
 
 export default function App() {
+  const [loggedIn, setLoggedIn] = useState(() => isLoggedIn())
   const [phase, setPhase] = useState<AppPhase>(
     () => (localStorage.getItem('swt_visited') ? 'app' : 'guide')
   )
+
+  // Google OAuth 콜백: URL에 ?token= 파라미터 처리
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('token')
+    if (token) {
+      setToken(token)
+      setLoggedIn(true)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedTicker, setSelectedTicker] = useState<string | null>(
     () => getRecentTickers()[0] ?? null,
@@ -89,6 +103,10 @@ export default function App() {
     }
   };
 
+  if (!loggedIn) {
+    return <Login />
+  }
+
   if (phase === 'guide') {
     return <Onboarding onStart={handleGuideStart} />
   }
@@ -127,6 +145,12 @@ export default function App() {
             {syncError && !syncWarning && (
               <span className="text-xs text-[#ef4444] whitespace-nowrap">{syncError}</span>
             )}
+            <button
+              onClick={() => { clearToken(); setLoggedIn(false) }}
+              className="px-2.5 sm:px-3 py-1.5 text-xs font-medium text-[#525252] bg-[#1c1c1c] border border-[#262626] rounded-sm hover:text-[#ef4444] transition-colors cursor-pointer whitespace-nowrap"
+            >
+              로그아웃
+            </button>
             <button
               onClick={handleRefresh}
               className="px-2.5 sm:px-3 py-1.5 text-xs font-medium text-[#a3a3a3] bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] hover:text-white transition-colors cursor-pointer whitespace-nowrap"

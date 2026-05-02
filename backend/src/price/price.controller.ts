@@ -8,20 +8,20 @@ import {
   Param,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { PriceService } from './price.service';
 import { CreateDailyPriceDto } from './dto/create-daily-price.dto';
 import { QueryPriceDto } from './dto/query-price.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('stocks/:ticker/prices')
+@UseGuards(JwtAuthGuard)
 export class PriceController {
   constructor(private readonly priceService: PriceService) {}
 
   @Get()
-  async findAll(
-    @Param('ticker') ticker: string,
-    @Query() query: QueryPriceDto,
-  ) {
+  async findAll(@Param('ticker') ticker: string, @Query() query: QueryPriceDto) {
     const data = await this.priceService.findAll(ticker, query);
     return { data, meta: { ticker, count: data.length } };
   }
@@ -43,10 +43,7 @@ export class PriceController {
   }
 
   @Post()
-  async upsert(
-    @Param('ticker') ticker: string,
-    @Body() dto: CreateDailyPriceDto,
-  ) {
+  async upsert(@Param('ticker') ticker: string, @Body() dto: CreateDailyPriceDto) {
     const data = await this.priceService.upsert(ticker, dto);
     return { data };
   }

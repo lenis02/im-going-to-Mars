@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Stock } from './entities/stock.entity';
 import { CreateStockDto } from './dto/create-stock.dto';
-import { UpdateStockDto } from './dto/update-stock.dto';
 
 export interface ForeignRankingRow {
   ticker: string;
@@ -20,12 +19,16 @@ export class StockService {
     private readonly stockRepo: Repository<Stock>,
   ) {}
 
-  findAll(): Promise<Stock[]> {
+  findAll(userId?: number): Promise<Stock[]> {
+    if (userId !== undefined) {
+      return this.stockRepo.find({ where: { userId }, order: { ticker: 'ASC' } });
+    }
     return this.stockRepo.find({ order: { ticker: 'ASC' } });
   }
 
-  findForeignRanking(): Promise<ForeignRankingRow[]> {
-    return this.stockRepo.query(`
+  findForeignRanking(userId: number): Promise<ForeignRankingRow[]> {
+    return this.stockRepo.query(
+      `
       WITH ranked AS (
         SELECT
           "stockId",
@@ -50,45 +53,37 @@ export class StockService {
       FROM stock s
       JOIN ranked dp ON dp."stockId" = s.id AND dp.rn <= 7
       LEFT JOIN consecutive c ON c."stockId" = s.id
+      WHERE s."userId" = $1
       GROUP BY s.id, s.ticker, s.name, c.consecutive_days
       ORDER BY SUM(dp."foreignNetBuy") DESC
-    `);
+      `,
+      [userId],
+    );
   }
 
-  async findOne(ticker: string): Promise<Stock> {
-    const stock = await this.stockRepo.findOneBy({ ticker });
-    if (!stock)
-      throw new NotFoundException(`종목을 찾을 수 없습니다: ${ticker}`);
+  async findOne(ticker: string, userId?: number): Promise<Stock> {
+    const where = userId !== undefined ? { ticker, userId } : { ticker };
+    const stock = await this.stockRepo.findOneBy(where);
+    if (!stock) throw new NotFoundException(`종목을 찾을 수 없습니다: ${ticker}`);
     return stock;
   }
 
-  create(dto: CreateStockDto): Promise<Stock> {
-    const stock = this.stockRepo.create(dto);
-    return this.stockRepo.save(stock);
-  }
-
-  async upsert(dto: CreateStockDto): Promise<void> {
+  async upsert(dto: CreateStockDto, userId: number): Promise<void> {
     await this.stockRepo
       .createQueryBuilder()
       .insert()
       .into(Stock)
-      .values(dto)
-      .orUpdate(['name'], ['ticker'])
+      .values({ ...dto, userId })
+      .orUpdate(['name'], ['ticker', 'userId'])
       .execute();
   }
 
-  async update(ticker: string, dto: UpdateStockDto): Promise<Stock> {
-    const stock = await this.findOne(ticker);
-    Object.assign(stock, dto);
-    return this.stockRepo.save(stock);
-  }
-
-  async remove(ticker: string): Promise<void> {
-    const stock = await this.findOne(ticker);
+  async remove(ticker: string, userId: number): Promise<void> {
+    const stock = await this.findOne(ticker, userId);
     await this.stockRepo.remove(stock);
   }
 
-  async removeAll(): Promise<void> {
-    await this.stockRepo.query('DELETE FROM stock');
+  async removeAll(userId: number): Promise<void> {
+    await this.stockRepo.query('DELETE FROM stock WHERE "userId" = $1', [userId]);
   }
 }
