@@ -53,17 +53,17 @@ export default function StockAddForm({ onAdded }: Props) {
   }
 
   return (
-    <div className="bg-[#141414] border border-[#262626] rounded-sm px-6 py-5">
+    <div className="bg-[#141414] border border-[#262626] rounded-sm px-4 sm:px-6 py-4 sm:py-5">
       <h2 className="text-sm font-medium text-white mb-4 tracking-tight">종목 추가</h2>
 
-      <div className="flex gap-3 items-center">
+      <div className="flex gap-2 sm:gap-3 items-center">
         <input
           value={ticker}
           onChange={(e) => { setTicker(e.target.value); setPreview(null) }}
           onKeyDown={handleKeyDown}
           placeholder="종목코드 입력 (예: 005930)"
           maxLength={6}
-          className="w-56 px-3 py-2 text-sm bg-[#0d0d0d] border border-[#333] rounded-sm focus:outline-none focus:border-[#525252] font-mono text-white placeholder-[#a3a3a3] transition-colors"
+          className="flex-1 min-w-0 sm:flex-none sm:w-56 px-3 py-2 text-sm bg-[#0d0d0d] border border-[#333] rounded-sm focus:outline-none focus:border-[#525252] font-mono text-white placeholder-[#a3a3a3] transition-colors"
         />
         <button
           onClick={() => void handleLookup()}

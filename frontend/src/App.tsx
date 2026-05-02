@@ -27,7 +27,7 @@ export default function App() {
           </span>
         </h1>
       </header>
-      <main className="max-w-4xl mx-auto px-6 py-6 flex flex-col gap-4">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex flex-col gap-4">
         <StockAddForm onAdded={handleAdded} />
         {selectedTicker && <StockAnalysis ticker={selectedTicker} />}
         <RecentStockList

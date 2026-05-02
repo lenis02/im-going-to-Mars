@@ -173,7 +173,7 @@ export default function StockAnalysis({ ticker }: Props) {
 
   if (loading) {
     return (
-      <div className="bg-[#141414] border border-[#262626] rounded-sm px-6 py-8 text-center text-sm text-[#a3a3a3]">
+      <div className="bg-[#141414] border border-[#262626] rounded-sm px-4 py-8 text-center text-sm text-[#a3a3a3]">
         분석 중...
       </div>
     )
@@ -181,7 +181,7 @@ export default function StockAnalysis({ ticker }: Props) {
 
   if (error || prices.length === 0) {
     return (
-      <div className="bg-[#141414] border border-[#262626] rounded-sm px-6 py-8 text-center text-sm text-[#a3a3a3]">
+      <div className="bg-[#141414] border border-[#262626] rounded-sm px-4 py-8 text-center text-sm text-[#a3a3a3]">
         {error ?? '동기화 후 분석이 가능합니다. POST /data-sync/prices를 실행해주세요.'}
       </div>
     )
@@ -227,7 +227,7 @@ export default function StockAnalysis({ ticker }: Props) {
     <>
       <div className="bg-[#141414] border border-[#262626] rounded-sm overflow-hidden">
         {/* 헤더 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#262626]">
+        <div className="flex items-start sm:items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#262626]">
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono font-medium text-[#22c55e] text-sm">{ticker}</span>
@@ -246,9 +246,9 @@ export default function StockAnalysis({ ticker }: Props) {
           </span>
         </div>
 
-        <div className="px-6 pt-5 pb-6 grid grid-cols-10 gap-6">
+        <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-5 sm:pb-6 grid grid-cols-1 sm:grid-cols-10 gap-4 sm:gap-6">
           {/* 캔들차트 */}
-          <div className="col-span-7">
+          <div className="col-span-1 sm:col-span-7">
             <p className="text-xs font-medium text-[#a3a3a3] mb-2">
               캔들차트 <span className="text-[#a3a3a3] font-normal">(수정주가 기준)</span>
             </p>
@@ -260,9 +260,9 @@ export default function StockAnalysis({ ticker }: Props) {
           </div>
 
           {/* 분석 결과 + 7일 누적 외인 순매수 */}
-          <div className="col-span-3 flex flex-col justify-between gap-1">
+          <div className="col-span-1 sm:col-span-3 flex flex-row sm:flex-col justify-around sm:justify-between items-center sm:items-stretch gap-2 sm:gap-1 border-t sm:border-t-0 border-[#262626] pt-4 sm:pt-0">
             {/* 매매 시그널 */}
-            <div className="text-center">
+            <div className="text-center flex-1">
               <p className="text-[10px] text-[#a3a3a3] font-medium mb-1.5 uppercase tracking-wider">매매 시그널</p>
               <button
                 onClick={() => signal && setShowModal(true)}
@@ -283,7 +283,7 @@ export default function StockAnalysis({ ticker }: Props) {
             </div>
 
             {/* 7일 누적 외인 순매수 */}
-            <div className="flex flex-col items-center gap-1 pb-3">
+            <div className="flex flex-col items-center gap-1 sm:pb-3 flex-1">
               <p className="text-[10px] font-medium text-[#a3a3a3] uppercase tracking-wider">7일 누적 외인 순매수</p>
               {(() => {
                 const latest = netBuyChartData[netBuyChartData.length - 1]
@@ -291,8 +291,7 @@ export default function StockAnalysis({ ticker }: Props) {
                 const isPositive = sum >= 0
                 return (
                   <span
-                    className={`font-bold font-mono tabular-nums ${isPositive ? 'text-[#22c55e]' : 'text-[#3b82f6]'}`}
-                    style={{ fontSize: '22px', lineHeight: 1.2 }}
+                    className={`font-bold font-mono tabular-nums text-xl sm:text-[22px] leading-tight ${isPositive ? 'text-[#22c55e]' : 'text-[#3b82f6]'}`}
                   >
                     {isPositive ? '+' : ''}{sum.toLocaleString()}
                   </span>
@@ -312,7 +311,7 @@ export default function StockAnalysis({ ticker }: Props) {
         >
           <div className="absolute inset-0 bg-black/60" />
           <div
-            className="relative bg-[#141414] border border-[#262626] rounded-sm w-80 mx-4 overflow-hidden"
+            className="relative bg-[#141414] border border-[#262626] rounded-sm w-full max-w-sm mx-4 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* 모달 헤더 */}
