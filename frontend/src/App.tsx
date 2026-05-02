@@ -7,7 +7,7 @@ import Onboarding from './components/Onboarding';
 import Login from './components/Login';
 import { getRecentTickers } from './utils/recentTickers';
 import { syncPrices } from './api/stock';
-import { getToken, setToken, clearToken, isLoggedIn } from './utils/auth';
+import { setToken, clearToken, isLoggedIn } from './utils/auth';
 
 type AppPhase = 'guide' | 'app'
 
