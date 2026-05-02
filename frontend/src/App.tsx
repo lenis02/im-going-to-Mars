@@ -7,6 +7,7 @@ import { getRecentTickers } from './utils/recentTickers';
 
 export default function App() {
   const [refreshKey, setRefreshKey] = useState(0);
+  const [rankingRefreshKey, setRankingRefreshKey] = useState(0);
   const [selectedTicker, setSelectedTicker] = useState<string | null>(
     () => getRecentTickers()[0] ?? null,
   );
@@ -14,6 +15,16 @@ export default function App() {
   const handleAdded = (ticker: string) => {
     setSelectedTicker(ticker);
     setRefreshKey((k) => k + 1);
+    setRankingRefreshKey((k) => k + 1);
+  };
+
+  const handleDeleted = (deletedTicker?: string) => {
+    setRankingRefreshKey((k) => k + 1);
+    if (deletedTicker && selectedTicker === deletedTicker) {
+      setSelectedTicker(getRecentTickers()[0] ?? null);
+    } else if (!deletedTicker) {
+      setSelectedTicker(null);
+    }
   };
 
   return (
@@ -34,8 +45,9 @@ export default function App() {
           refreshKey={refreshKey}
           onSelect={setSelectedTicker}
           selectedTicker={selectedTicker}
+          onDeleted={handleDeleted}
         />
-        <ForeignRankingTable />
+        <ForeignRankingTable refreshKey={rankingRefreshKey} />
       </main>
     </div>
   );

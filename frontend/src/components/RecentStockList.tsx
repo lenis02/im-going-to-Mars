@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchStocks, fetchForeignRanking } from '../api/stock'
+import { fetchStocks, fetchForeignRanking, deleteStock } from '../api/stock'
 import type { Stock, ForeignRankingItem } from '../api/stock'
 import { getRecentTickers, removeRecentTicker, clearRecentTickers } from '../utils/recentTickers'
 
@@ -12,9 +12,10 @@ interface Props {
   refreshKey: number
   selectedTicker: string | null
   onSelect: (ticker: string) => void
+  onDeleted?: (ticker?: string) => void
 }
 
-export default function RecentStockList({ refreshKey, selectedTicker, onSelect }: Props) {
+export default function RecentStockList({ refreshKey, selectedTicker, onSelect, onDeleted }: Props) {
   const [rows, setRows] = useState<StockRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -63,7 +64,12 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect }
         <div className="flex items-center gap-2">
           {rows.length > 0 && (
             <button
-              onClick={() => { clearRecentTickers(); setRows([]) }}
+              onClick={async () => {
+                await Promise.allSettled(rows.map((r) => deleteStock(r.ticker)))
+                clearRecentTickers()
+                setRows([])
+                onDeleted?.()
+              }}
               className="px-3 py-1.5 text-xs font-medium text-[#a3a3a3] bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] hover:text-[#ef4444] transition-colors cursor-pointer whitespace-nowrap"
             >
               모두 삭제
@@ -134,10 +140,12 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect }
                   </td>
                   <td className="px-3 sm:px-4 py-3 sm:py-4 text-right">
                     <button
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.stopPropagation()
+                        await deleteStock(row.ticker)
                         removeRecentTicker(row.ticker)
                         setRows((prev) => prev.filter((r) => r.ticker !== row.ticker))
+                        onDeleted?.(row.ticker)
                       }}
                       className="text-[#525252] hover:text-[#ef4444] transition-colors cursor-pointer text-xs leading-none"
                     >

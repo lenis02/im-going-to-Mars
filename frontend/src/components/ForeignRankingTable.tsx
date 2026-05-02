@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { fetchForeignRanking } from '../api/stock';
 import type { ForeignRankingItem } from '../api/stock';
 
-export default function ForeignRankingTable() {
+export default function ForeignRankingTable({ refreshKey }: { refreshKey?: number }) {
   const [data, setData] = useState<ForeignRankingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +21,7 @@ export default function ForeignRankingTable() {
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [refreshKey]);
 
   return (
     <div className="bg-[#141414] border border-[#262626] rounded-sm overflow-hidden">

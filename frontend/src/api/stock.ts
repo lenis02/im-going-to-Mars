@@ -87,6 +87,10 @@ export interface StockSignal {
   reason: string
 }
 
+export async function deleteStock(ticker: string): Promise<void> {
+  await api.delete(`/stocks/${ticker}`)
+}
+
 export async function fetchSignal(ticker: string, changeRate?: number): Promise<StockSignal> {
   const res = await api.get<{ data: StockSignal }>(`/stocks/${ticker}/prices/signal`, {
     params: changeRate !== undefined ? { changeRate } : {},
