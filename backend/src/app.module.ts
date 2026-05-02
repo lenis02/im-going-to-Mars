@@ -22,18 +22,27 @@ import configuration from './config/configuration';
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get<string>('database.host'),
-        port: config.get<number>('database.port'),
-        username: config.get<string>('database.username'),
-        password: config.get<string>('database.password'),
-        database: config.get<string>('database.database'),
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
-        synchronize: config.get<string>('NODE_ENV') !== 'production',
-        migrationsRun: true,
-      }),
+      useFactory: (config: ConfigService) => {
+        const databaseUrl = process.env.DATABASE_URL;
+        const isProduction = config.get<string>('NODE_ENV') === 'production';
+        return {
+          type: 'postgres',
+          ...(databaseUrl
+            ? { url: databaseUrl }
+            : {
+                host: config.get<string>('database.host'),
+                port: config.get<number>('database.port'),
+                username: config.get<string>('database.username'),
+                password: config.get<string>('database.password'),
+                database: config.get<string>('database.database'),
+              }),
+          ssl: databaseUrl || isProduction ? { rejectUnauthorized: false } : false,
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
+          synchronize: !isProduction,
+          migrationsRun: true,
+        };
+      },
     }),
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),

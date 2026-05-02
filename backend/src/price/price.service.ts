@@ -111,7 +111,6 @@ export class PriceService {
         : 0;
     const priceChangeRate = currentChangeRate ?? Number(latest.changeRate);
 
-    const currentPrice = Number(latest.close);
     const detector = new CandlePatternDetector();
     const recentCandles = sorted.map((p) => ({
       open: Number(p.open),
