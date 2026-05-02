@@ -53,47 +53,42 @@ export default function StockAddForm({ onAdded }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-5">
-      <h2 className="text-base font-semibold text-gray-900 mb-4">종목 추가</h2>
+    <div className="bg-[#141414] border border-[#262626] rounded-sm px-4 sm:px-6 py-4 sm:py-5">
+      <h2 className="text-sm font-medium text-white mb-4 tracking-tight">종목 추가</h2>
 
-      <div className="flex gap-3 items-center">
+      <div className="flex gap-2 sm:gap-3 items-center">
         <input
           value={ticker}
           onChange={(e) => { setTicker(e.target.value); setPreview(null) }}
           onKeyDown={handleKeyDown}
           placeholder="종목코드 입력 (예: 005930)"
           maxLength={6}
-          className="w-56 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+          className="flex-1 min-w-0 sm:flex-none sm:w-56 px-3 py-2 text-sm bg-[#0d0d0d] border border-[#333] rounded-sm focus:outline-none focus:border-[#525252] font-mono text-white placeholder-[#a3a3a3] transition-colors"
         />
         <button
           onClick={() => void handleLookup()}
           disabled={lookupLoading || !ticker.trim()}
-          className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 disabled:opacity-40 transition-colors"
+          className="px-4 py-2 text-xs font-medium text-[#a3a3a3] bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] hover:text-white disabled:opacity-40 transition-colors cursor-pointer"
         >
           {lookupLoading ? '조회 중...' : '조회'}
         </button>
       </div>
 
       {lookupError && (
-        <p className="mt-3 text-xs text-red-500">{lookupError}</p>
+        <p className="mt-3 text-xs text-[#ef4444]">{lookupError}</p>
       )}
 
       {preview && (
-        <div className="mt-4 flex items-center gap-4 px-4 py-3 bg-gray-50 rounded-xl border border-gray-100">
-          <div className="flex-1">
-            <span className="font-mono font-medium text-blue-600 text-sm">{preview.ticker}</span>
-            <span className="mx-2 text-gray-300">|</span>
-            <span className="font-medium text-gray-900 text-sm">{preview.name}</span>
-            <span className={`ml-3 inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-              preview.market === 'KOSPI' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'
-            }`}>
-              {preview.market}
-            </span>
+        <div className="mt-4 flex items-center gap-4 px-4 py-3 bg-[#1c1c1c] border border-[#262626] rounded-sm">
+          <div className="flex-1 flex items-center gap-2">
+            <span className="font-mono font-medium text-[#22c55e] text-sm">{preview.ticker}</span>
+            <span className="text-[#a3a3a3]">·</span>
+            <span className="font-medium text-white text-sm">{preview.name}</span>
           </div>
           <button
             onClick={() => void handleAdd()}
             disabled={addLoading}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors"
+            className="px-4 py-2 text-xs font-medium text-white bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] disabled:opacity-40 transition-colors cursor-pointer"
           >
             {addLoading ? '추가 중...' : '추가하기'}
           </button>

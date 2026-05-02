@@ -8,9 +8,9 @@ import { UpdateStockDto } from './dto/update-stock.dto';
 export interface ForeignRankingRow {
   ticker: string;
   name: string;
-  market: string;
   foreignNetBuy: number;
   date: string;
+  consecutiveDays: number;
 }
 
 @Injectable()
@@ -26,19 +26,31 @@ export class StockService {
 
   findForeignRanking(): Promise<ForeignRankingRow[]> {
     return this.stockRepo.query(`
+      WITH ranked AS (
+        SELECT
+          "stockId",
+          "foreignNetBuy",
+          date,
+          ROW_NUMBER() OVER (PARTITION BY "stockId" ORDER BY date DESC) AS rn
+        FROM daily_price
+      ),
+      consecutive AS (
+        SELECT
+          "stockId",
+          COALESCE(MIN(CASE WHEN "foreignNetBuy" <= 0 THEN rn END) - 1, MAX(rn)) AS consecutive_days
+        FROM ranked
+        GROUP BY "stockId"
+      )
       SELECT
         s.ticker,
         s.name,
-        s.market,
         SUM(dp."foreignNetBuy") AS "foreignNetBuy",
-        to_char(MAX(dp.date), 'YYYY-MM-DD') AS date
+        to_char(MAX(dp.date), 'YYYY-MM-DD') AS date,
+        COALESCE(c.consecutive_days, 0) AS "consecutiveDays"
       FROM stock s
-      JOIN (
-        SELECT *,
-          ROW_NUMBER() OVER (PARTITION BY "stockId" ORDER BY date DESC) AS rn
-        FROM daily_price
-      ) dp ON dp."stockId" = s.id AND dp.rn <= 7
-      GROUP BY s.id, s.ticker, s.name, s.market
+      JOIN ranked dp ON dp."stockId" = s.id AND dp.rn <= 7
+      LEFT JOIN consecutive c ON c."stockId" = s.id
+      GROUP BY s.id, s.ticker, s.name, c.consecutive_days
       ORDER BY SUM(dp."foreignNetBuy") DESC
     `);
   }
@@ -61,7 +73,7 @@ export class StockService {
       .insert()
       .into(Stock)
       .values(dto)
-      .orUpdate(['name', 'market'], ['ticker'])
+      .orUpdate(['name'], ['ticker'])
       .execute();
   }
 
