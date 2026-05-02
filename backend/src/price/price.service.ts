@@ -6,7 +6,7 @@ import { StockService } from '../stock/stock.service';
 import { CreateDailyPriceDto } from './dto/create-daily-price.dto';
 import { QueryPriceDto } from './dto/query-price.dto';
 import { CandlePatternDetector, CandleCategory } from '../common/utils/candle-pattern.util';
-import { evaluateSwingSignalWithCandle, SignalResult } from '../common/utils/signal.util';
+import { calcSupportFloor, evaluateSwingSignalWithCandle, SignalResult } from '../common/utils/signal.util';
 
 @Injectable()
 export class PriceService {
@@ -72,6 +72,7 @@ export class PriceService {
   async getSignal(ticker: string, currentChangeRate?: number): Promise<{
     patternName: string;
     patternCategory: CandleCategory | null;
+    stopLoss: number;
     status: SignalResult['status'];
     isRecommend: boolean;
     reason: string;
@@ -89,6 +90,7 @@ export class PriceService {
       return {
         patternName: '',
         patternCategory: null,
+        stopLoss: 0,
         status: '조건 대기',
         isRecommend: false,
         reason: '데이터가 충분하지 않습니다.',
@@ -109,6 +111,7 @@ export class PriceService {
         : 0;
     const priceChangeRate = currentChangeRate ?? Number(latest.changeRate);
 
+    const currentPrice = Number(latest.close);
     const detector = new CandlePatternDetector();
     const recentCandles = sorted.map((p) => ({
       open: Number(p.open),
@@ -118,6 +121,8 @@ export class PriceService {
     }));
     const { patternName, category: patternCategory } =
       await detector.detectPattern(recentCandles);
+
+    const stopLoss = Math.floor(calcSupportFloor(recentCandles, 15));
 
     const noPattern =
       patternName === '식별된 패턴 없음' || patternName === '데이터 없음';
@@ -133,6 +138,7 @@ export class PriceService {
     return {
       patternName: noPattern ? '' : patternName,
       patternCategory,
+      stopLoss,
       ...signalResult,
     };
   }

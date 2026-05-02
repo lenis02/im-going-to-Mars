@@ -47,7 +47,35 @@ export function calcSupportFloor(
   const window = candles.slice(-lookback);
   const filtered = window.filter((c) => !isOutlierTail(c));
   const lows = filtered.map((c) => Math.min(c.open, c.close));
-  return Math.min(...lows);
+
+  if (lows.length === 0) return 0;
+
+  // 중앙값 기준 0.5% 단위 버킷으로 클러스터링 → 최빈 지지 가격대 탐색
+  const sorted = [...lows].sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  const bucketWidth = median * 0.005;
+
+  const buckets = new Map<number, { count: number; minLow: number }>();
+  for (const low of lows) {
+    const key = Math.floor(low / bucketWidth);
+    const entry = buckets.get(key);
+    if (entry) {
+      entry.count++;
+      entry.minLow = Math.min(entry.minLow, low);
+    } else {
+      buckets.set(key, { count: 1, minLow: low });
+    }
+  }
+
+  let maxCount = 0;
+  let supportFloor = sorted[0];
+  for (const { count, minLow } of buckets.values()) {
+    if (count > maxCount || (count === maxCount && minLow > supportFloor)) {
+      maxCount = count;
+      supportFloor = minLow;
+    }
+  }
+  return supportFloor;
 }
 
 export function isExitSignal(
