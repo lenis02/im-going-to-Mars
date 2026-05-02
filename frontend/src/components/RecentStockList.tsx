@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchStocks, fetchForeignRanking } from '../api/stock'
 import type { Stock, ForeignRankingItem } from '../api/stock'
-import { getRecentTickers } from '../utils/recentTickers'
+import { getRecentTickers, removeRecentTicker, clearRecentTickers } from '../utils/recentTickers'
 
 interface StockRow extends Stock {
   foreignNetBuy?: number
@@ -60,13 +60,23 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect }
           <h2 className="text-sm font-medium text-white tracking-tight">최근 검색 종목</h2>
           <p className="text-xs text-[#a3a3a3] mt-0.5">종목 클릭 시 분석 화면으로 이동 · 7일 누적 외인 순매수</p>
         </div>
-        <button
-          onClick={() => void load()}
-          disabled={loading}
-          className="px-3 py-1.5 text-xs font-medium text-[#a3a3a3] bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] hover:text-white disabled:opacity-50 transition-colors cursor-pointer"
-        >
-          {loading ? '로딩 중...' : '새로고침'}
-        </button>
+        <div className="flex items-center gap-2">
+          {rows.length > 0 && (
+            <button
+              onClick={() => { clearRecentTickers(); setRows([]) }}
+              className="px-3 py-1.5 text-xs font-medium text-[#a3a3a3] bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] hover:text-[#ef4444] transition-colors cursor-pointer whitespace-nowrap"
+            >
+              모두 삭제
+            </button>
+          )}
+          <button
+            onClick={() => void load()}
+            disabled={loading}
+            className="px-3 py-1.5 text-xs font-medium text-[#a3a3a3] bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] hover:text-white disabled:opacity-50 transition-colors cursor-pointer whitespace-nowrap"
+          >
+            {loading ? '로딩 중...' : '새로고침'}
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -82,6 +92,7 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect }
               <th className="px-3 sm:px-6 py-3 text-left font-medium">종목명</th>
               <th className="px-3 sm:px-6 py-3 text-right font-medium">7일 순매수</th>
               <th className="px-3 sm:px-6 py-3 text-center font-medium">기준일</th>
+              <th className="px-3 sm:px-6 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-[#1c1c1c]">
@@ -96,7 +107,7 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect }
                 </tr>
               ))
             ) : (
-              rows.map((row) => (
+              rows.slice(0, 10).map((row) => (
                 <tr
                   key={row.ticker}
                   onClick={() => onSelect(row.ticker)}
@@ -120,6 +131,18 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect }
                   </td>
                   <td className="px-6 py-4 text-center text-[#a3a3a3] text-xs">
                     {row.date ?? '—'}
+                  </td>
+                  <td className="px-3 sm:px-4 py-3 sm:py-4 text-right">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeRecentTicker(row.ticker)
+                        setRows((prev) => prev.filter((r) => r.ticker !== row.ticker))
+                      }}
+                      className="text-[#525252] hover:text-[#ef4444] transition-colors cursor-pointer text-xs leading-none"
+                    >
+                      ✕
+                    </button>
                   </td>
                 </tr>
               ))

@@ -75,11 +75,11 @@ export default function ForeignRankingTable() {
                     {item.name}
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-right font-medium">
-                    <span className={item.consecutiveDays >= 3 ? 'text-[#22c55e]' : 'text-[#e5e5e5]'}>
+                    <span className={item.consecutiveDays >= 3 ? 'text-[#ef4444]' : 'text-[#e5e5e5]'}>
                       {item.consecutiveDays}일
                     </span>
                   </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-right font-mono font-medium text-white">
+                  <td className={`px-3 sm:px-6 py-3 sm:py-4 text-right font-mono font-medium ${item.foreignNetBuy >= 0 ? 'text-[#ef4444]' : 'text-[#3b82f6]'}`}>
                     {item.foreignNetBuy.toLocaleString()}
                   </td>
                   <td className="hidden sm:table-cell px-6 py-3 sm:py-4 text-center text-[#a3a3a3] text-xs">
