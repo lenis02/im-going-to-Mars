@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { fetchStocks, fetchForeignRanking } from '../api/stock'
+import { fetchStocks, fetchForeignRanking, deleteStock } from '../api/stock'
 import type { Stock, ForeignRankingItem } from '../api/stock'
-import { getRecentTickers } from '../utils/recentTickers'
+import { getRecentTickers, removeRecentTicker, clearRecentTickers } from '../utils/recentTickers'
 
 interface StockRow extends Stock {
   foreignNetBuy?: number
@@ -12,9 +12,10 @@ interface Props {
   refreshKey: number
   selectedTicker: string | null
   onSelect: (ticker: string) => void
+  onDeleted?: (ticker?: string) => void
 }
 
-export default function RecentStockList({ refreshKey, selectedTicker, onSelect }: Props) {
+export default function RecentStockList({ refreshKey, selectedTicker, onSelect, onDeleted }: Props) {
   const [rows, setRows] = useState<StockRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -58,15 +59,30 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect }
       <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#262626]">
         <div>
           <h2 className="text-sm font-medium text-white tracking-tight">최근 검색 종목</h2>
-          <p className="text-xs text-[#a3a3a3] mt-0.5">종목 클릭 시 분석 화면으로 이동 · 7일 누적 외인 순매수</p>
+          <p className="text-xs text-[#a3a3a3] mt-0.5">클릭 시 분석 · <span className="hidden sm:inline">7일 누적</span> 외인 순매수</p>
         </div>
-        <button
-          onClick={() => void load()}
-          disabled={loading}
-          className="px-3 py-1.5 text-xs font-medium text-[#a3a3a3] bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] hover:text-white disabled:opacity-50 transition-colors cursor-pointer"
-        >
-          {loading ? '로딩 중...' : '새로고침'}
-        </button>
+        <div className="flex items-center gap-2">
+          {rows.length > 0 && (
+            <button
+              onClick={async () => {
+                await Promise.allSettled(rows.map((r) => deleteStock(r.ticker)))
+                clearRecentTickers()
+                setRows([])
+                onDeleted?.()
+              }}
+              className="px-3 py-1.5 text-xs font-medium text-[#a3a3a3] bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] hover:text-[#ef4444] transition-colors cursor-pointer whitespace-nowrap"
+            >
+              모두 삭제
+            </button>
+          )}
+          <button
+            onClick={() => void load()}
+            disabled={loading}
+            className="px-3 py-1.5 text-xs font-medium text-[#a3a3a3] bg-[#1c1c1c] border border-[#333] rounded-sm hover:bg-[#262626] hover:text-white disabled:opacity-50 transition-colors cursor-pointer whitespace-nowrap"
+          >
+            {loading ? '로딩 중...' : '새로고침'}
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -81,22 +97,22 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect }
             <tr className="border-b border-[#1c1c1c] text-[#a3a3a3] text-xs uppercase tracking-wider">
               <th className="px-3 sm:px-6 py-3 text-left font-medium">종목명</th>
               <th className="px-3 sm:px-6 py-3 text-right font-medium">7일 순매수</th>
-              <th className="px-3 sm:px-6 py-3 text-center font-medium">기준일</th>
+              <th className="hidden sm:table-cell px-6 py-3 text-center font-medium">기준일</th>
+              <th className="px-3 py-3 w-8" />
             </tr>
           </thead>
           <tbody className="divide-y divide-[#1c1c1c]">
             {loading ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <tr key={i}>
-                  {Array.from({ length: 3 }).map((__, j) => (
-                    <td key={j} className="px-3 sm:px-6 py-3 sm:py-4">
-                      <div className="h-3 bg-[#262626] rounded-sm animate-pulse" />
-                    </td>
-                  ))}
+                  <td className="px-3 sm:px-6 py-3 sm:py-4"><div className="h-3 bg-[#262626] rounded-sm animate-pulse" /></td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4"><div className="h-3 bg-[#262626] rounded-sm animate-pulse" /></td>
+                  <td className="hidden sm:table-cell px-6 py-3 sm:py-4"><div className="h-3 bg-[#262626] rounded-sm animate-pulse" /></td>
+                  <td className="px-3 py-3 sm:py-4 w-8" />
                 </tr>
               ))
             ) : (
-              rows.map((row) => (
+              rows.slice(0, 10).map((row) => (
                 <tr
                   key={row.ticker}
                   onClick={() => onSelect(row.ticker)}
@@ -107,7 +123,7 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect }
                   }`}
                 >
                   <td className="px-3 sm:px-6 py-3 sm:py-4 font-medium text-white">{row.name}</td>
-                  <td className={`px-6 py-4 text-right font-mono font-medium ${
+                  <td className={`px-3 sm:px-6 py-3 sm:py-4 text-right font-mono font-medium ${
                     row.foreignNetBuy === undefined
                       ? 'text-[#a3a3a3]'
                       : row.foreignNetBuy >= 0
@@ -115,11 +131,25 @@ export default function RecentStockList({ refreshKey, selectedTicker, onSelect }
                         : 'text-[#3b82f6]'
                   }`}>
                     {row.foreignNetBuy === undefined
-                      ? '동기화 필요'
+                      ? '—'
                       : Number(row.foreignNetBuy).toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 text-center text-[#a3a3a3] text-xs">
+                  <td className="hidden sm:table-cell px-6 py-3 sm:py-4 text-center text-[#a3a3a3] text-xs">
                     {row.date ?? '—'}
+                  </td>
+                  <td className="px-3 py-3 sm:py-4 text-right w-8">
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        await deleteStock(row.ticker)
+                        removeRecentTicker(row.ticker)
+                        setRows((prev) => prev.filter((r) => r.ticker !== row.ticker))
+                        onDeleted?.(row.ticker)
+                      }}
+                      className="text-[#525252] hover:text-[#ef4444] transition-colors cursor-pointer text-xs leading-none"
+                    >
+                      ✕
+                    </button>
                   </td>
                 </tr>
               ))
