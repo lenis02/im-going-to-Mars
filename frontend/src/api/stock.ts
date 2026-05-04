@@ -68,7 +68,7 @@ export async function fetchForeignRanking(): Promise<ForeignRankingItem[]> {
 }
 
 export async function createStock(dto: CreateStockDto): Promise<Stock> {
-  const res = await api.post<{ data: Stock }>('/stocks', dto)
+  const res = await api.post<{ data: Stock }>('/data-sync/stocks', dto)
   return res.data.data
 }
 

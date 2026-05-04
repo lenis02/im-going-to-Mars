@@ -40,6 +40,19 @@ export class PriceSyncTask {
     }
   }
 
+  // 단일 종목 동기화 (종목 추가 직후 호출)
+  async runForTicker(ticker: string, userId: number): Promise<void> {
+    const to = new Date();
+    const from = subDays(to, 30);
+    try {
+      const stock = await this.stockService.findOne(ticker, userId);
+      await this.syncStock(stock.ticker, from, to);
+      this.logger.log(`단일 종목 동기화 완료: ${ticker}`);
+    } catch (err) {
+      this.logger.error(`단일 종목 동기화 실패: ${ticker} — ${(err as Error).message}`);
+    }
+  }
+
   private async sync(userId?: number): Promise<void> {
     const stocks = await this.stockService.findAll(userId);
 
@@ -57,32 +70,7 @@ export class PriceSyncTask {
 
     for (const stock of stocks) {
       try {
-        const prices = await this.kisAdapter.fetchDailyPrices(stock.ticker, from, to);
-
-        if (prices.length === 0) {
-          this.logger.warn(`${stock.ticker} OHLCV 없음, 스킵`);
-          successCount++;
-          continue;
-        }
-
-        const latestTradingDate = new Date(prices[0].date);
-        const investorData = await this.kisAdapter.fetchInvestorTradeDailyByStock(
-          stock.ticker,
-          from,
-          latestTradingDate,
-        );
-
-        const investorMap = new Map(investorData.map((d) => [d.date, d.foreignNetBuy]));
-
-        for (const price of prices) {
-          const foreignNetBuy = investorMap.get(price.date);
-          await this.priceService.upsert(
-            stock.ticker,
-            { ...price, foreignNetBuy: foreignNetBuy ?? 0 },
-            foreignNetBuy !== undefined,
-          );
-        }
-
+        await this.syncStock(stock.ticker, from, to);
         successCount++;
       } catch (err) {
         failCount++;
@@ -91,5 +79,32 @@ export class PriceSyncTask {
     }
 
     this.logger.log(`동기화 완료 (성공: ${successCount}, 실패: ${failCount})`);
+  }
+
+  private async syncStock(ticker: string, from: Date, to: Date): Promise<void> {
+    const prices = await this.kisAdapter.fetchDailyPrices(ticker, from, to);
+
+    if (prices.length === 0) {
+      this.logger.warn(`${ticker} OHLCV 없음, 스킵`);
+      return;
+    }
+
+    const latestTradingDate = new Date(prices[0].date);
+    const investorData = await this.kisAdapter.fetchInvestorTradeDailyByStock(
+      ticker,
+      from,
+      latestTradingDate,
+    );
+
+    const investorMap = new Map(investorData.map((d) => [d.date, d.foreignNetBuy]));
+
+    for (const price of prices) {
+      const foreignNetBuy = investorMap.get(price.date);
+      await this.priceService.upsert(
+        ticker,
+        { ...price, foreignNetBuy: foreignNetBuy ?? 0 },
+        foreignNetBuy !== undefined,
+      );
+    }
   }
 }
