@@ -127,7 +127,7 @@ export class KisAdapter implements MarketDataPort {
             params: {
               FID_COND_MRKT_DIV_CODE: marketCode,
               FID_INPUT_ISCD: ticker,
-              FID_INPUT_DATE_1: format(to, 'yyyyMMdd'),
+              FID_INPUT_DATE_1: format(from, 'yyyyMMdd'),
               FID_INPUT_DATE_2: format(to, 'yyyyMMdd'),
               FID_ORG_ADJ_PRC: '0',
               FID_ETC_CLS_CODE: '00',
@@ -151,8 +151,13 @@ export class KisAdapter implements MarketDataPort {
       }
     }
 
-    this.logger.error(`외인 투자자 API 모든 시장 코드 실패: ${ticker}`);
-    throw lastErr instanceof Error ? lastErr : new Error(`외인 투자자 API 실패: ${ticker}`);
+    if (lastErr !== undefined) {
+      this.logger.error(`외인 투자자 API 모든 시장 코드 실패: ${ticker}`);
+      throw lastErr instanceof Error ? lastErr : new Error(`외인 투자자 API 실패: ${ticker}`);
+    }
+
+    this.logger.warn(`외인 투자자 데이터 없음 (빈 응답): ${ticker}`);
+    return [];
   }
 
   async fetchCurrentPrice(ticker: string): Promise<CurrentPriceDto> {

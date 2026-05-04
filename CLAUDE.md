@@ -45,12 +45,27 @@ src/
 ├── app.module.ts
 ├── main.ts
 │
-├── common/                        # 전역 유틸·데코레이터·가드
+├── auth/                          # Google OAuth + JWT 인증
+│   ├── auth.module.ts
+│   ├── auth.controller.ts
+│   ├── auth.service.ts
 │   ├── decorators/
+│   │   └── current-user.decorator.ts
+│   ├── entities/
+│   │   └── user.entity.ts
+│   ├── guards/
+│   │   ├── google-auth.guard.ts
+│   │   └── jwt-auth.guard.ts
+│   └── strategies/
+│       ├── google.strategy.ts
+│       └── jwt.strategy.ts
+│
+├── common/                        # 전역 유틸·데코레이터·가드
 │   ├── filters/                   # 글로벌 예외 필터
 │   ├── interceptors/
 │   └── utils/
 │       ├── candle.util.ts         # 캔들 몸통/꼬리 계산 함수
+│       ├── candle-pattern.util.ts
 │       └── signal.util.ts         # Entry/Exit 조건 판별 순수 함수
 │
 ├── config/                        # ConfigModule 설정
@@ -61,10 +76,17 @@ src/
 │
 ├── stock/                         # 종목 마스터
 │   ├── stock.module.ts
-│   ├── stock.controller.ts
+│   ├── stock.controller.ts        # GET/DELETE/PATCH 전담 (추가는 data-sync에서)
 │   ├── stock.service.ts
 │   └── entities/
-│       └── stock.entity.ts        # ticker, name, market(KOSPI/KOSDAQ)
+│       └── stock.entity.ts        # ticker, name, userId (market 필드 없음)
+│
+├── stock-master/                  # KRX 종목 마스터 검색 (ticker 자동완성)
+│   ├── stock-master.module.ts
+│   ├── stock-master.controller.ts # GET /stock-master/search?q=
+│   ├── stock-master.service.ts
+│   └── entities/
+│       └── stock-master.entity.ts
 │
 ├── price/                         # 일봉 OHLCV + 외인 순매수
 │   ├── price.module.ts
@@ -82,26 +104,29 @@ src/
 │
 ├── valuation/                     # PBR, PER 저장
 │   ├── valuation.module.ts
+│   ├── valuation.controller.ts
 │   ├── valuation.service.ts
 │   └── entities/
 │       └── valuation.entity.ts
 │
 ├── data-sync/                     # 외부 데이터 수집 파이프라인
 │   ├── data-sync.module.ts
+│   ├── data-sync.controller.ts    # POST /data-sync/stocks (종목 추가+sync 통합)
 │   ├── tasks/
-│   │   ├── price-sync.task.ts     # @Cron: 장 마감 후 일봉 수집
-│   │   ├── foreign-sync.task.ts   # @Cron: 외인 순매수 수집
-│   │   └── valuation-sync.task.ts # @Cron: PBR/PER 수집
-│   └── adapters/                  # 증권사 API or 크롤러 추상화
+│   │   ├── price-sync.task.ts     # @Cron: 일봉 OHLCV + 외인 순매수 동시 수집
+│   │   └── signal-detect.task.ts  # @Cron: 신호 탐지 실행
+│   └── adapters/                  # 증권사 API 추상화
 │       ├── market-data.port.ts    # 인터페이스 (Port)
 │       └── kis/                   # 한국투자증권 OpenAPI 구현체
-│           └── kis-adapter.ts
+│           ├── kis-adapter.ts
+│           ├── kis-auth.service.ts
+│           └── kis.types.ts
 │
-└── analysis/                      # LLM 분석 확장 영역 (초기에는 stub)
+└── analysis/                      # LLM 분석 확장 영역 (stub)
     ├── analysis.module.ts
-    ├── analysis.service.ts        # 차트·공시 분석 오케스트레이터
+    ├── analysis.service.ts
     └── providers/
-        └── llm.provider.ts        # LLM 클라이언트 추상화
+        └── llm.provider.ts
 ```
 
 ---
@@ -161,17 +186,19 @@ await this.dataSource.transaction(async (manager) => {
 ```typescript
 export interface MarketDataPort {
   fetchDailyPrices(ticker: string, from: Date, to: Date): Promise<OhlcvDto[]>;
-  fetchForeignNetBuy(ticker: string, date: Date): Promise<number>;
+  fetchInvestorTradeDailyByStock(ticker: string, from: Date, to: Date): Promise<DailyInvestorDto[]>;
+  fetchCurrentPrice(ticker: string): Promise<CurrentPriceDto>;
 }
 ```
+
+- `fetchInvestorTradeDailyByStock`: J(KOSPI)/Q(KOSDAQ) 순서로 시도, 빈 응답 시 `[]` 반환 (throw 금지)
+- `fetchDailyPrices`: `FID_COND_MRKT_DIV_CODE: 'J'`로 고정 (KOSPI/KOSDAQ 모두 처리됨)
 
 ### 5-2. Cron 스케줄 기준
 
 | Task | 스케줄 | 비고 |
 |------|--------|------|
-| price-sync | `0 18 * * 1-5` | 장 마감(15:30) 후 여유 있게 |
-| foreign-sync | `30 18 * * 1-5` | 외인 데이터 공개 후 |
-| valuation-sync | `0 8 * * 1` | 주 1회 월요일 오전 |
+| price-sync | `0 18 * * 1-5` | 일봉 OHLCV + 외인 순매수 동시 수집 |
 | signal-detect | `0 19 * * 1-5` | 수집 완료 후 신호 탐지 |
 
 ### 5-3. 수집 실패 처리
@@ -188,6 +215,21 @@ export interface MarketDataPort {
 - 날짜 파라미터는 `YYYY-MM-DD` 형식으로 통일 (ISO 8601)
 - 페이지네이션: cursor 기반 (`?cursor=&limit=`) 우선 고려 (일봉 데이터 양이 많을 수 있음)
 - 에러 응답은 Nest.js 글로벌 예외 필터에서 `{ statusCode, message, timestamp }` 형식으로 통일
+- 모든 엔드포인트는 `JwtAuthGuard`로 보호 (auth 관련 엔드포인트 제외)
+
+### 6-1. 주요 엔드포인트 (실제 구현 기준)
+
+| Method | Path | 설명 |
+|--------|------|------|
+| POST | `/data-sync/stocks` | **종목 추가 + 즉시 sync** (프론트에서 종목 추가 시 이 엔드포인트 사용) |
+| GET | `/stocks` | 내 종목 목록 |
+| DELETE | `/stocks/:ticker` | 종목 삭제 |
+| GET | `/stocks/ranking/foreign` | 외인 순매수 랭킹 |
+| GET | `/stocks/:ticker/prices` | 일봉 OHLCV + 외인 데이터 |
+| POST | `/data-sync/prices` | 전체 종목 수동 sync |
+| GET | `/data-sync/lookup/:ticker` | KIS API로 종목명 조회 |
+| GET | `/data-sync/quote/:ticker` | 현재가 조회 |
+| GET | `/stock-master/search?q=` | 종목 마스터 검색 (자동완성) |
 
 ---
 
@@ -273,14 +315,26 @@ export interface LlmProvider {
 
 ```
 NODE_ENV=development
+
+# 로컬 개발: 아래 개별 항목 사용
 DB_HOST=localhost
 DB_PORT=5432
 DB_USERNAME=
 DB_PASSWORD=
 DB_DATABASE=practice_stock
+
+# 배포(Neon 등): DATABASE_URL 하나로 대체 가능
+DATABASE_URL=
+
+KIS_BASE_URL=https://openapi.koreainvestment.com:9443
 KIS_APP_KEY=
 KIS_APP_SECRET=
+
 LLM_API_KEY=
+GROQ_API_KEY=
+
+# 프론트엔드 배포 URL (CORS 허용)
+CORS_ORIGIN=https://your-app.vercel.app
 ```
 
 ---
